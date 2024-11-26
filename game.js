@@ -184,7 +184,7 @@ class Platform {
 class Player {
     constructor() {
         this.x = 100; // World X
-        this.y = GAME_HEIGHT - 150; // World Y (above ground or on platform)
+        this.y = GAME_HEIGHT - images.ground.height - 100; // Adjusted to use ground height
         this.width = 50;
         this.height = 50;
         this.vx = 0;
@@ -496,31 +496,47 @@ const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of d
 function init() {
     player = new Player();
 
-    // Create platforms first (needed for coin placement on platforms)
-    platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
-    platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20)); // Platform without enemy
-    platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
-    platforms.push(new Platform(3000, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
+    // Initialize platforms, enemies, and coins
+    platforms = createPlatforms();
+    enemies = createEnemies();
+    coins = createCoins();
+}
 
-    // Create enemies at specific positions (static on ground)
-    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1300, GAME_HEIGHT - 100)); // Enemy on ground
-    enemies.push(new Enemy(1600, GAME_HEIGHT - 100)); // Another enemy on ground
-    enemies.push(new Enemy(2000, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(2500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(3000, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(3500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(4000, GAME_HEIGHT - 100));
+// Create Platforms
+function createPlatforms() {
+    return [
+        new Platform(400, GAME_HEIGHT - images.ground.height - 150, 150, 20),
+        new Platform(700, GAME_HEIGHT - images.ground.height - 220, 200, 20),
+        new Platform(1000, GAME_HEIGHT - images.ground.height - 180, 170, 20),
+        new Platform(1300, GAME_HEIGHT - images.ground.height - 150, 150, 20), // Platform without enemy
+        new Platform(1600, GAME_HEIGHT - images.ground.height - 180, 170, 20),
+        new Platform(2000, GAME_HEIGHT - images.ground.height - 150, 150, 20),
+        new Platform(2500, GAME_HEIGHT - images.ground.height - 220, 200, 20),
+        new Platform(3000, GAME_HEIGHT - images.ground.height - 180, 170, 20),
+        new Platform(3500, GAME_HEIGHT - images.ground.height - 150, 150, 20),
+        new Platform(4000, GAME_HEIGHT - images.ground.height - 180, 170, 20)
+    ];
+}
 
-    // Place 20 coins strategically (some on ground, some on platforms)
+// Create Enemies
+function createEnemies() {
+    return [
+        new Enemy(500, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(800, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(1100, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(1300, GAME_HEIGHT - images.ground.height - 100), // Enemy on ground
+        new Enemy(1600, GAME_HEIGHT - images.ground.height - 100), // Another enemy on ground
+        new Enemy(2000, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(2500, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(3000, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(3500, GAME_HEIGHT - images.ground.height - 100),
+        new Enemy(4000, GAME_HEIGHT - images.ground.height - 100)
+    ];
+}
+
+// Create Coins
+function createCoins() {
+    const coinList = [];
     for (let i = 1; i <= 20; i++) {
         let coinX = 200 + i * 200; // Increased spacing to spread out coins
 
@@ -532,14 +548,15 @@ function init() {
                 let platform = platforms[i % platforms.length];
                 coinY = platform.y - 40; // Place the coin slightly above the platform
             } else {
-                coinY = GAME_HEIGHT - 200;
+                coinY = GAME_HEIGHT - images.ground.height - 200;
             }
         } else {
-            coinY = GAME_HEIGHT - 200; // On ground
+            coinY = GAME_HEIGHT - images.ground.height - 200; // On ground
         }
 
-        coins.push(new Coin(coinX, coinY));
+        coinList.push(new Coin(coinX, coinY));
     }
+    return coinList;
 }
 
 // Create a particle
@@ -643,6 +660,19 @@ function checkCollisions() {
             }
         }
     }
+
+    // Prevent player from going above the canvas
+    if (player.y < 0) {
+        player.y = 0;
+        player.vy = 0;
+    }
+
+    // Prevent player from going below the canvas
+    if (player.y + player.height > GAME_HEIGHT - images.ground.height) {
+        player.y = GAME_HEIGHT - images.ground.height - player.height;
+        player.vy = 0;
+        player.onGround = true;
+    }
 }
 
 // Collision Detection
@@ -661,6 +691,9 @@ function update(deltaTime, currentTime) {
         enemy.updateChase(player.x, player.y, deltaTime);
     });
 
+    // Prevent enemies from overlapping
+    resolveEnemyCollisions();
+
     coins.forEach(coin => coin.update());
 
     // Platforms are static; no update needed
@@ -668,22 +701,47 @@ function update(deltaTime, currentTime) {
     checkCollisions();
 
     updateParticles(deltaTime);
+}
 
-    // Update camera position based on player position
-    // Deadzone logic to keep the player within a central area before scrolling
-    const cameraOffset = DEADZONE_RIGHT_BOUND; // Define how far the player can move before the camera scrolls
+// Resolve Collisions Between Enemies to Prevent Overlapping
+function resolveEnemyCollisions() {
+    for (let i = 0; i < enemies.length; i++) {
+        for (let j = i + 1; j < enemies.length; j++) {
+            let enemyA = enemies[i];
+            let enemyB = enemies[j];
 
-    if (player.x - cameraX > cameraOffset) {
-        cameraX = player.x - cameraOffset;
+            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
+                // Calculate the overlap in both axes
+                let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
+                let overlapY = Math.min(enemyA.y + enemyA.height, enemyB.y + enemyB.height) - Math.max(enemyA.y, enemyB.y);
+
+                // Resolve the collision by adjusting positions based on minimal overlap
+                if (overlapX < overlapY) {
+                    // Adjust along X axis
+                    if (enemyA.x < enemyB.x) {
+                        enemyA.x -= overlapX / 2;
+                        enemyB.x += overlapX / 2;
+                    } else {
+                        enemyA.x += overlapX / 2;
+                        enemyB.x -= overlapX / 2;
+                    }
+                } else {
+                    // Adjust along Y axis
+                    if (enemyA.y < enemyB.y) {
+                        enemyA.y -= overlapY / 2;
+                        enemyB.y += overlapY / 2;
+                    } else {
+                        enemyA.y += overlapY / 2;
+                        enemyB.y -= overlapY / 2;
+                    }
+                }
+
+                // Optionally, reverse direction upon collision to prevent sticking
+                enemyA.vx *= -1;
+                enemyB.vx *= -1;
+            }
+        }
     }
-
-    // Prevent camera from moving beyond the world bounds
-    if (cameraX + GAME_WIDTH > WORLD_WIDTH) {
-        cameraX = WORLD_WIDTH - GAME_WIDTH;
-    }
-
-    // Prevent camera from moving left beyond the world start
-    if (cameraX < 0) cameraX = 0;
 }
 
 // Update HUD
@@ -827,58 +885,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function restartGame() {
     // Reset game state
     player = new Player();
-    enemies = [];
-    coins = [];
-    platforms = [];
+    enemies = createEnemies();
+    coins = createCoins();
+    platforms = createPlatforms();
     particles = [];
     gameOver = false;
     win = false;
     cameraX = 0;
-
-    // Create platforms first (needed for coin placement on platforms)
-    platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
-    platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
-    platforms.push(new Platform(3000, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
-    platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
-
-    // Create enemies again (static on ground)
-    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1300, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1600, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(2000, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(2500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(3000, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(3500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(4000, GAME_HEIGHT - 100));
-
-    // Place 20 coins strategically (some on ground, some on platforms)
-    for (let i = 1; i <= 20; i++) {
-        let coinX = 200 + i * 200; // Increased spacing to spread out coins
-
-        // Alternate between ground and platform placement
-        let coinY;
-        if (i % 5 === 0) { // Every 5th coin on a platform
-            // Find a platform to place the coin on
-            if (platforms.length > 0) {
-                let platform = platforms[i % platforms.length];
-                coinY = platform.y - 40; // Place the coin slightly above the platform
-            } else {
-                coinY = GAME_HEIGHT - 200;
-            }
-        } else {
-            coinY = GAME_HEIGHT - 200; // On ground
-        }
-
-        coins.push(new Coin(coinX, coinY));
-    }
 
     // Hide end message
     const endMessage = document.getElementById('endMessage');
@@ -897,6 +910,47 @@ function restartGame() {
     // Restart the game loop
     lastTime = performance.now(); // Reset lastTime for deltaTime calculation
     requestAnimationFrame(gameLoop);
+}
+
+// Resolve Collisions Between Enemies to Prevent Overlapping
+function resolveEnemyCollisions() {
+    for (let i = 0; i < enemies.length; i++) {
+        for (let j = i + 1; j < enemies.length; j++) {
+            let enemyA = enemies[i];
+            let enemyB = enemies[j];
+
+            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
+                // Calculate the overlap in both axes
+                let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
+                let overlapY = Math.min(enemyA.y + enemyA.height, enemyB.y + enemyB.height) - Math.max(enemyA.y, enemyB.y);
+
+                // Resolve the collision by adjusting positions based on minimal overlap
+                if (overlapX < overlapY) {
+                    // Adjust along X axis
+                    if (enemyA.x < enemyB.x) {
+                        enemyA.x -= overlapX / 2;
+                        enemyB.x += overlapX / 2;
+                    } else {
+                        enemyA.x += overlapX / 2;
+                        enemyB.x -= overlapX / 2;
+                    }
+                } else {
+                    // Adjust along Y axis
+                    if (enemyA.y < enemyB.y) {
+                        enemyA.y -= overlapY / 2;
+                        enemyB.y += overlapY / 2;
+                    } else {
+                        enemyA.y += overlapY / 2;
+                        enemyB.y -= overlapY / 2;
+                    }
+                }
+
+                // Optionally, reverse direction upon collision to prevent sticking
+                enemyA.vx *= -1;
+                enemyB.vx *= -1;
+            }
+        }
+    }
 }
 
 // Load all assets and initialize the game
