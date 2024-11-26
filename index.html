@@ -2,19 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Side-Scrolling Turtle Game</title>
+    <title>Retro Turtle Platformer</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Importing a Retro Font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <canvas id="gameCanvas" width="1200" height="600"></canvas>
+        
+        <!-- Start Screen Overlay -->
+        <div id="startScreen">
+            <button id="startButton">Start Game</button>
+        </div>
+        
         <div id="hud">
-            <div id="coinCounter">
-                <img src="assets/images/coin-icon.png" alt="Coin" />
-                Coins: 0/20
+            <div id="coinCounter"><img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20</div>
+            <div id="staminaMeter">
+                <div id="staminaFill"></div>
             </div>
         </div>
-        <div id="endMessage"></div>
+        <div id="endMessage" class="hidden">
+            <!-- End game messages will appear here -->
+        </div>
+    </div>
+    <!-- Controls Section -->
+    <div id="controlsContainer">
+        <h2>Controls</h2>
+        <div class="control">
+            <span class="key">A / D</span>
+            <span class="action">Move Left / Right</span>
+        </div>
+        <div class="control">
+            <span class="key">W / Space</span>
+            <span class="action">Jump</span>
+        </div>
+        <div class="control">
+            <span class="key">Ctrl</span>
+            <span class="action">Punch</span>
+        </div>
+        <div class="control">
+            <span class="key">Shift</span>
+            <span class="action">Sprint</span>
+        </div>
+    </div>
+    <!-- New Toggle Buttons -->
+    <div id="audioControls">
+        <button id="toggleMusic">Music: On</button>
+        <button id="toggleSound">Sound Effects: On</button>
     </div>
     <script src="game.js"></script>
 </body>

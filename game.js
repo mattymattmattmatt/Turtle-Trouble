@@ -4,13 +4,18 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // Game dimensions
-const GAME_WIDTH = canvas.width;
-const GAME_HEIGHT = canvas.height;
+const GAME_WIDTH = canvas.width; // 1200
+const GAME_HEIGHT = canvas.height; // 600
 
-// Adjusted game settings
-const PLAYER_SPEED = 2; // Slowed down from 3
-const PLAYER_JUMP_STRENGTH = 12; // Slowed down from 15
-const GRAVITY = 0.5; // Slowed down from 0.7
+// World dimensions
+const WORLD_WIDTH = 5000; // Total width of the game world in pixels
+const WORLD_HEIGHT = GAME_HEIGHT; // Matches the canvas height
+
+// Game settings
+const PLAYER_SPEED = 2; // Normal walking speed
+const SPRINT_MULTIPLIER = 1.5; // Sprint speed multiplier
+const PLAYER_JUMP_STRENGTH = 12; // Jump strength
+const GRAVITY = 0.5; // Gravity strength
 
 // Load images
 const images = {};
@@ -21,49 +26,68 @@ const imageSources = {
     jump: 'assets/images/turtle-jump.png',
     punch: 'assets/images/turtle-punch.png',
     enemy: 'assets/images/bad-turtle.png',
+    enemyWalk1: 'assets/images/Bad-turtle-walk1.png',
+    enemyWalk2: 'assets/images/Bad-turtle-walk2.png',
     coin: 'assets/images/coin.png',
     background: 'assets/images/background.png',
     ground: 'assets/images/ground.png',
-    platform: 'assets/images/platform.png', // New platform image
+    platform: 'assets/images/platform.png',
     coinIcon: 'assets/images/coin-icon.png'
 };
 
-// Load all images
-let loadedImages = 0;
-const totalImages = Object.keys(imageSources).length;
+// Load all images using Promises
+const loadImages = () => {
+    const promises = Object.keys(imageSources).map(key => {
+        return new Promise((resolve, reject) => {
+            images[key] = new Image();
+            images[key].src = imageSources[key];
+            images[key].onload = () => resolve();
+            images[key].onerror = () => {
+                console.error(`Failed to load image: ${imageSources[key]}`);
+                resolve(); // Resolve even if an image fails to load to prevent blocking
+            };
+        });
+    });
+    return Promise.all(promises);
+};
 
-for (let key in imageSources) {
-    images[key] = new Image();
-    images[key].src = imageSources[key];
-    images[key].onload = () => {
-        loadedImages++;
-        if (loadedImages === totalImages) {
-            init(); // Start the game once all images are loaded
-        }
-    };
-}
-
-// Load audio (Optional)
+// Load audio (Including Background Music)
 const sounds = {};
 const soundSources = {
     jump: 'assets/audio/jump.wav',
     punch: 'assets/audio/punch.wav',
     collectCoin: 'assets/audio/collect-coin.wav',
-    gameOver: 'assets/audio/game-over.wav'
+    gameOver: 'assets/audio/game-over.wav',
+    background: 'assets/audio/Turtle-Trouble-Theme.mp3' // New Background Music
 };
 
-for (let key in soundSources) {
-    sounds[key] = new Audio(soundSources[key]);
-}
+// Flags to track audio settings
+let isMusicOn = true;
+let isSoundEffectsOn = true;
+
+// Load all sounds
+const loadSounds = () => {
+    Object.keys(soundSources).forEach(key => {
+        sounds[key] = new Audio(soundSources[key]);
+        if (key === 'background') {
+            sounds[key].loop = true; // Loop the background music
+            sounds[key].volume = 0.4; // Set volume to 40%
+        } else {
+            sounds[key].volume = 1.0; // Default volume for sound effects
+        }
+    });
+};
 
 // Handle user input
 const keys = {
     left: false,
     right: false,
     up: false,
-    punch: false
+    punch: false,
+    sprint: false
 };
 
+// Event listeners for key presses
 document.addEventListener('keydown', (e) => {
     switch(e.code) {
         case 'KeyA':
@@ -78,7 +102,14 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'ControlLeft':
         case 'ControlRight':
-            keys.punch = true;
+            if (!keys.punch) { // Prevent setting punch to true multiple times
+                keys.punch = true;
+                player.initiatePunch();
+            }
+            break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+            keys.sprint = true;
             break;
     }
 });
@@ -98,6 +129,10 @@ document.addEventListener('keyup', (e) => {
         case 'ControlLeft':
         case 'ControlRight':
             keys.punch = false;
+            break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+            keys.sprint = false;
             break;
     }
 });
@@ -149,7 +184,7 @@ class Platform {
 class Player {
     constructor() {
         this.x = 100; // World X
-        this.y = GAME_HEIGHT - 150; // World Y (above ground)
+        this.y = GAME_HEIGHT - 150; // World Y (above ground or on platform)
         this.width = 50;
         this.height = 50;
         this.vx = 0;
@@ -162,19 +197,65 @@ class Player {
         this.animationFrame = 0;
         this.frameCount = 0;
         this.coinsCollected = 0;
+        this.facing = 'right'; // 'right' or 'left'
+
+        // Punch Mechanic
+        this.isPunching = false;
+        this.punchCooldown = false;
+        this.punchDuration = 500; // in milliseconds
+        this.punchStartTime = 0;
+
+        // Sprint Mechanic
+        this.isSprinting = false;
+        this.stamina = 100; // Max stamina
+        this.maxStamina = 100;
+        this.staminaDepletionRate = 100 / 1.5; // 100 stamina in 1.5 seconds
+        this.staminaRechargeRate = 100 / 1.5; // Recharges 100 stamina in 1.5 seconds
     }
 
-    update() {
+    initiatePunch() {
+        if (!this.isPunching && !this.punchCooldown) {
+            this.isPunching = true;
+            this.punchCooldown = true;
+            this.state = 'punching';
+            this.punchStartTime = performance.now();
+            if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+        }
+    }
+
+    update(deltaTime, currentTime) {
+        // Handle sprinting
+        if (keys.sprint && this.stamina > 0) {
+            this.isSprinting = true;
+            this.speed = PLAYER_SPEED * SPRINT_MULTIPLIER;
+            this.stamina -= this.staminaDepletionRate * (deltaTime / 1000);
+            if (this.stamina < 0) {
+                this.stamina = 0;
+            }
+        } else {
+            this.isSprinting = false;
+            this.speed = PLAYER_SPEED;
+            // Recharge stamina
+            if (this.stamina < this.maxStamina && !keys.sprint) {
+                this.stamina += this.staminaRechargeRate * (deltaTime / 1000);
+                if (this.stamina > this.maxStamina) {
+                    this.stamina = this.maxStamina;
+                }
+            }
+        }
+
         // Handle horizontal movement
         if (keys.left) {
             this.vx = -this.speed;
-            if (this.onGround) this.state = 'walking';
+            this.facing = 'left';
+            if (this.onGround && !this.isPunching) this.state = 'walking';
         } else if (keys.right) {
             this.vx = this.speed;
-            if (this.onGround) this.state = 'walking';
+            this.facing = 'right';
+            if (this.onGround && !this.isPunching) this.state = 'walking';
         } else {
             this.vx = 0;
-            if (this.onGround && !keys.punch) this.state = 'idle';
+            if (this.onGround && !this.isPunching) this.state = 'idle';
         }
 
         // Handle jumping
@@ -182,14 +263,21 @@ class Player {
             this.vy = -this.jumpStrength;
             this.onGround = false;
             this.state = 'jumping';
-            if (sounds.jump) sounds.jump.play();
+            if (isSoundEffectsOn && sounds.jump) sounds.jump.play();
         }
 
-        // Handle punching
-        if (keys.punch && this.onGround) {
-            this.state = 'punching';
-            // To prevent continuous punching, implement a cooldown or animation lock
-            if (sounds.punch) sounds.punch.play();
+        // Handle punching timing
+        if (this.isPunching) {
+            if (currentTime - this.punchStartTime >= this.punchDuration) {
+                this.isPunching = false;
+                this.punchCooldown = false; // Reset cooldown after punch duration
+                // Reset state based on movement
+                if (this.vx === 0) {
+                    this.state = 'idle';
+                } else {
+                    this.state = 'walking';
+                }
+            }
         }
 
         // Apply gravity
@@ -200,11 +288,10 @@ class Player {
         // Prevent moving out of world bounds (left side)
         if (this.x < 0) this.x = 0;
 
-        // Handle animation frames
-        this.frameCount++;
-        if (this.frameCount >= 10) { // Adjust for animation speed
-            this.frameCount = 0;
-            this.animationFrame = (this.animationFrame + 1) % 2;
+        // Prevent moving out of world bounds (right side)
+        if (this.x + this.width > WORLD_WIDTH) {
+            this.x = WORLD_WIDTH - this.width;
+            this.vx = 0;
         }
     }
 
@@ -226,7 +313,29 @@ class Player {
             default:
                 img = images.idle;
         }
-        ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
+
+        ctx.save();
+        if (this.facing === 'left') {
+            ctx.translate(this.x - cameraX + this.width, this.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, this.width, this.height);
+        } else {
+            ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
+        }
+        ctx.restore();
+
+        // Handle walking animation frame updates only when walking
+        if (this.state === 'walking') {
+            this.frameCount += 1;
+            if (this.frameCount >= 10) { // Adjust for animation speed
+                this.frameCount = 0;
+                this.animationFrame = (this.animationFrame + 1) % 2;
+            }
+        } else {
+            // Reset to first animation frame when not walking
+            this.animationFrame = 0;
+            this.frameCount = 0;
+        }
     }
 }
 
@@ -234,25 +343,110 @@ class Player {
 class Enemy {
     constructor(x, y) {
         this.x = x; // World X
-        this.y = y; // World Y
+        this.y = y; // World Y (on ground)
         this.width = 50;
         this.height = 50;
-        this.vx = -2; // Enemy speed moving left
+        this.vx = 0; // Current horizontal velocity
         this.alive = true;
+        this.speed = 1.5; // Enemy movement speed
+        this.state = 'idle'; // idle or chasing
+        this.animationFrame = 0;
+        this.frameCount = 0;
+        this.facing = 'right'; // 'right' or 'left'
+
+        // Chasing parameters
+        this.chaseDistance = 200; // Start chasing if player is within 200px
+        this.stopChaseDistance = 250; // Stop chasing if player is beyond 250px
     }
 
-    update() {
+    initiateChase(playerX) {
+        this.state = 'chasing';
+        // Determine direction
+        if (playerX < this.x) {
+            this.vx = -this.speed;
+            this.facing = 'left';
+        } else {
+            this.vx = this.speed;
+            this.facing = 'right';
+        }
+    }
+
+    stopChase() {
+        this.state = 'idle';
+        this.vx = 0;
+    }
+
+    updateChase(playerX, playerY, deltaTime) {
+        if (!this.alive) return;
+
+        // Calculate distance to player
+        const distance = Math.abs(playerX - this.x);
+
+        if (this.state === 'idle') {
+            if (distance <= this.chaseDistance) {
+                this.initiateChase(playerX);
+            }
+        } else if (this.state === 'chasing') {
+            if (distance > this.stopChaseDistance) {
+                this.stopChase();
+            } else {
+                // Continue chasing
+                if (playerX < this.x) {
+                    this.vx = -this.speed;
+                    this.facing = 'left';
+                } else {
+                    this.vx = this.speed;
+                    this.facing = 'right';
+                }
+            }
+        }
+
+        // Move enemy
         this.x += this.vx;
 
-        // Remove enemy if it goes off-screen (left side)
-        if (this.x + this.width < 0) {
-            this.alive = false;
+        // Prevent enemy from moving out of world bounds
+        if (this.x < 0) {
+            this.x = 0;
+            this.vx = 0;
+        }
+        if (this.x + this.width > WORLD_WIDTH) {
+            this.x = WORLD_WIDTH - this.width;
+            this.vx = 0;
         }
     }
 
     draw(cameraX) {
-        if (this.alive) {
-            ctx.drawImage(images.enemy, this.x - cameraX, this.y, this.width, this.height);
+        if (!this.alive) return;
+
+        // Determine which walk image to use based on animation frame
+        let img;
+        if (this.state === 'chasing') {
+            img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
+        } else {
+            img = images.enemy; // Idle image
+        }
+
+        ctx.save();
+        if (this.facing === 'left') {
+            ctx.translate(this.x - cameraX + this.width, this.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, this.width, this.height);
+        } else {
+            ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
+        }
+        ctx.restore();
+
+        // Handle walking animation frame updates only when chasing
+        if (this.state === 'chasing') {
+            this.frameCount += 1;
+            if (this.frameCount >= 15) { // Adjust for animation speed
+                this.frameCount = 0;
+                this.animationFrame = (this.animationFrame + 1) % 2;
+            }
+        } else {
+            // Reset to first animation frame when not chasing
+            this.animationFrame = 0;
+            this.frameCount = 0;
         }
     }
 }
@@ -302,24 +496,50 @@ const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of d
 function init() {
     player = new Player();
 
-    // Create enemies at specific positions
-    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
-
-    // Place 20 coins strategically
-    for (let i = 1; i <= 20; i++) {
-        let coinX = 200 + i * 100; // Adjust spacing as needed
-        let coinY = GAME_HEIGHT - 200 - (i % 5) * 30; // Vary the height
-        coins.push(new Coin(coinX, coinY));
-    }
-
-    // Create platforms
+    // Create platforms first (needed for coin placement on platforms)
     platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
     platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20)); // Platform without enemy
+    platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
+    platforms.push(new Platform(3000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
 
-    requestAnimationFrame(gameLoop);
+    // Create enemies at specific positions (static on ground)
+    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(1300, GAME_HEIGHT - 100)); // Enemy on ground
+    enemies.push(new Enemy(1600, GAME_HEIGHT - 100)); // Another enemy on ground
+    enemies.push(new Enemy(2000, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(2500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(3000, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(3500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(4000, GAME_HEIGHT - 100));
+
+    // Place 20 coins strategically (some on ground, some on platforms)
+    for (let i = 1; i <= 20; i++) {
+        let coinX = 200 + i * 200; // Increased spacing to spread out coins
+
+        // Alternate between ground and platform placement
+        let coinY;
+        if (i % 5 === 0) { // Every 5th coin on a platform
+            // Find a platform to place the coin on
+            if (platforms.length > 0) {
+                let platform = platforms[i % platforms.length];
+                coinY = platform.y - 40; // Place the coin slightly above the platform
+            } else {
+                coinY = GAME_HEIGHT - 200;
+            }
+        } else {
+            coinY = GAME_HEIGHT - 200; // On ground
+        }
+
+        coins.push(new Coin(coinX, coinY));
+    }
 }
 
 // Create a particle
@@ -328,7 +548,7 @@ function createParticle(x, y, color = '#FFD700') { // Default color gold
 }
 
 // Update particles
-function updateParticles() {
+function updateParticles(deltaTime) {
     particles.forEach((particle, index) => {
         particle.update();
         if (particle.alpha <= 0) {
@@ -337,9 +557,13 @@ function updateParticles() {
     });
 }
 
-// Game Loop
-function gameLoop() {
-    update();
+// Game Loop with deltaTime for accurate timing
+let lastTime = 0;
+function gameLoop(timeStamp) {
+    const deltaTime = timeStamp - lastTime;
+    lastTime = timeStamp;
+
+    update(deltaTime, timeStamp);
     render();
 
     if (!gameOver && !win) {
@@ -359,17 +583,17 @@ function checkCollisions() {
                 enemy.alive = false;
                 player.vy = -10; // Bounce effect
                 createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000'); // Red particles
-                if (sounds.punch) sounds.punch.play();
-            } else if (keys.punch) {
+                if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+            } else if (player.isPunching) {
                 // Player is punching
                 enemy.alive = false;
                 createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000'); // Red particles
-                if (sounds.punch) sounds.punch.play();
+                if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else {
                 // Player takes damage or game over
                 gameOver = true;
                 createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
-                if (sounds.gameOver) sounds.gameOver.play();
+                if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
             }
         }
     });
@@ -380,7 +604,7 @@ function checkCollisions() {
             coin.collected = true;
             player.coinsCollected++;
             createParticle(coin.x + coin.width / 2, coin.y + coin.height / 2);
-            if (sounds.collectCoin) sounds.collectCoin.play();
+            if (isSoundEffectsOn && sounds.collectCoin) sounds.collectCoin.play();
             if (player.coinsCollected === 20) {
                 win = true;
             }
@@ -395,20 +619,28 @@ function checkCollisions() {
                 player.y = platform.y - player.height;
                 player.vy = 0;
                 player.onGround = true;
-                if (player.vx === 0 && !keys.punch) {
-                    player.state = 'idle';
+                if (!player.isPunching) {
+                    if (player.vx === 0) {
+                        player.state = 'idle';
+                    } else {
+                        player.state = 'walking';
+                    }
                 }
             }
         }
     });
 
     // Check collision with ground
-    if (player.y + player.height >= GAME_HEIGHT - 50) { // Ground is at GAME_HEIGHT - 50
-        player.y = GAME_HEIGHT - 50 - player.height;
+    if (player.y + player.height >= GAME_HEIGHT - images.ground.height) { // Ground height from image
+        player.y = GAME_HEIGHT - images.ground.height - player.height;
         player.vy = 0;
         player.onGround = true;
-        if (player.vx === 0 && !keys.punch) {
-            player.state = 'idle';
+        if (!player.isPunching) {
+            if (player.vx === 0) {
+                player.state = 'idle';
+            } else {
+                player.state = 'walking';
+            }
         }
     }
 }
@@ -422,28 +654,35 @@ function isColliding(rect1, rect2) {
 }
 
 // Update Game Objects
-function update() {
-    player.update();
+function update(deltaTime, currentTime) {
+    player.update(deltaTime, currentTime);
 
-    enemies.forEach(enemy => enemy.update());
-    enemies = enemies.filter(enemy => enemy.alive); // Remove dead enemies
+    enemies.forEach(enemy => {
+        enemy.updateChase(player.x, player.y, deltaTime);
+    });
 
     coins.forEach(coin => coin.update());
 
-    platforms.forEach(platform => {
-        // Platforms are static; no update needed unless they move
-    });
+    // Platforms are static; no update needed
 
     checkCollisions();
 
-    updateParticles();
+    updateParticles(deltaTime);
 
     // Update camera position based on player position
-    if (player.x - cameraX > DEADZONE_RIGHT_BOUND) {
-        cameraX = player.x - DEADZONE_RIGHT_BOUND;
+    // Deadzone logic to keep the player within a central area before scrolling
+    const cameraOffset = DEADZONE_RIGHT_BOUND; // Define how far the player can move before the camera scrolls
+
+    if (player.x - cameraX > cameraOffset) {
+        cameraX = player.x - cameraOffset;
     }
 
-    // Optional: Prevent camera from moving left beyond the world start
+    // Prevent camera from moving beyond the world bounds
+    if (cameraX + GAME_WIDTH > WORLD_WIDTH) {
+        cameraX = WORLD_WIDTH - GAME_WIDTH;
+    }
+
+    // Prevent camera from moving left beyond the world start
     if (cameraX < 0) cameraX = 0;
 }
 
@@ -451,6 +690,19 @@ function update() {
 function updateHUD() {
     const coinCounter = document.getElementById('coinCounter');
     coinCounter.innerHTML = `<img src="assets/images/coin-icon.png" alt="Coin" /> Coins: ${player.coinsCollected}/20`;
+
+    // Update Stamina Meter
+    const staminaFill = document.getElementById('staminaFill');
+    staminaFill.style.width = `${player.stamina}%`;
+
+    // Change color based on stamina level
+    if (player.stamina > 60) {
+        staminaFill.style.backgroundColor = '#00ff00'; // Green
+    } else if (player.stamina > 30) {
+        staminaFill.style.backgroundColor = '#ffff00'; // Yellow
+    } else {
+        staminaFill.style.backgroundColor = '#ff0000'; // Red
+    }
 }
 
 // Render Game
@@ -464,7 +716,7 @@ function render() {
     const bgCount = Math.ceil(GAME_WIDTH / bgWidth) + 1;
 
     for (let i = 0; i < bgCount; i++) {
-        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - 50);
+        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - images.ground.height);
     }
 
     // Draw ground
@@ -473,7 +725,7 @@ function render() {
     const groundCount = Math.ceil(GAME_WIDTH / groundWidth) + 1;
 
     for (let i = 0; i < groundCount; i++) {
-        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - 50, groundWidth, groundHeight);
+        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - groundHeight, groundWidth, groundHeight);
     }
 
     // Draw platforms
@@ -514,6 +766,63 @@ function displayEndMessage() {
     endMessage.classList.add('show');
 }
 
+// Toggle Music Function
+function toggleMusic() {
+    const toggleMusicBtn = document.getElementById('toggleMusic');
+    if (isMusicOn) {
+        sounds.background.pause();
+        isMusicOn = false;
+        toggleMusicBtn.textContent = 'Music: Off';
+        toggleMusicBtn.classList.remove('active');
+    } else {
+        sounds.background.play();
+        isMusicOn = true;
+        toggleMusicBtn.textContent = 'Music: On';
+        toggleMusicBtn.classList.add('active');
+    }
+}
+
+// Toggle Sound Effects Function
+function toggleSoundEffects() {
+    const toggleSoundBtn = document.getElementById('toggleSound');
+    if (isSoundEffectsOn) {
+        isSoundEffectsOn = false;
+        toggleSoundBtn.textContent = 'Sound Effects: Off';
+        toggleSoundBtn.classList.remove('active');
+    } else {
+        isSoundEffectsOn = true;
+        toggleSoundBtn.textContent = 'Sound Effects: On';
+        toggleSoundBtn.classList.add('active');
+    }
+}
+
+// Add Event Listeners for Toggle Buttons and Start Button
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleMusicBtn = document.getElementById('toggleMusic');
+    const toggleSoundBtn = document.getElementById('toggleSound');
+    const startButton = document.getElementById('startButton');
+    const startScreen = document.getElementById('startScreen');
+
+    toggleMusicBtn.addEventListener('click', toggleMusic);
+    toggleSoundBtn.addEventListener('click', toggleSoundEffects);
+
+    startButton.addEventListener('click', () => {
+        // Hide Start Screen
+        startScreen.style.display = 'none';
+
+        // Play background music if music is on
+        if (isMusicOn && sounds.background) {
+            sounds.background.play().catch(error => {
+                console.error('Failed to play background music:', error);
+            });
+        }
+
+        // Start the game loop
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    });
+});
+
 // Restart Game
 function restartGame() {
     // Reset game state
@@ -526,28 +835,74 @@ function restartGame() {
     win = false;
     cameraX = 0;
 
-    // Create enemies again
-    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
-    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
-
-    // Place 20 coins strategically
-    for (let i = 1; i <= 20; i++) {
-        let coinX = 200 + i * 100; // Adjust spacing as needed
-        let coinY = GAME_HEIGHT - 200 - (i % 5) * 30; // Vary the height
-        coins.push(new Coin(coinX, coinY));
-    }
-
-    // Create platforms
+    // Create platforms first (needed for coin placement on platforms)
     platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
     platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
+    platforms.push(new Platform(3000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
+
+    // Create enemies again (static on ground)
+    enemies.push(new Enemy(500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(800, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(1100, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(1300, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(1600, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(2000, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(2500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(3000, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(3500, GAME_HEIGHT - 100));
+    enemies.push(new Enemy(4000, GAME_HEIGHT - 100));
+
+    // Place 20 coins strategically (some on ground, some on platforms)
+    for (let i = 1; i <= 20; i++) {
+        let coinX = 200 + i * 200; // Increased spacing to spread out coins
+
+        // Alternate between ground and platform placement
+        let coinY;
+        if (i % 5 === 0) { // Every 5th coin on a platform
+            // Find a platform to place the coin on
+            if (platforms.length > 0) {
+                let platform = platforms[i % platforms.length];
+                coinY = platform.y - 40; // Place the coin slightly above the platform
+            } else {
+                coinY = GAME_HEIGHT - 200;
+            }
+        } else {
+            coinY = GAME_HEIGHT - 200; // On ground
+        }
+
+        coins.push(new Coin(coinX, coinY));
+    }
 
     // Hide end message
+    const endMessage = document.getElementById('endMessage');
     if (endMessage) {
         endMessage.classList.remove('show');
     }
 
+    // Restart the background music if it's on
+    if (isMusicOn && sounds.background) {
+        sounds.background.currentTime = 0;
+        sounds.background.play().catch(error => {
+            console.error('Failed to play background music:', error);
+        });
+    }
+
     // Restart the game loop
+    lastTime = performance.now(); // Reset lastTime for deltaTime calculation
     requestAnimationFrame(gameLoop);
 }
+
+// Load all assets and initialize the game
+loadImages()
+    .then(() => {
+        loadSounds();
+        init();
+    })
+    .catch(err => console.error('Error loading assets:', err));
