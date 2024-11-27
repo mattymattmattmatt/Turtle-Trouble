@@ -293,6 +293,26 @@ class Player {
             this.x = WORLD_WIDTH - this.width;
             this.vx = 0;
         }
+
+        // Prevent player from going above the canvas
+        if (this.y < 0) {
+            this.y = 0;
+            this.vy = 0;
+        }
+
+        // Prevent player from going below the ground
+        if (this.y + this.height > GAME_HEIGHT - images.ground.height) { // Ground height from image
+            this.y = GAME_HEIGHT - images.ground.height - this.height;
+            this.vy = 0;
+            this.onGround = true;
+            if (!this.isPunching) {
+                if (this.vx === 0) {
+                    this.state = 'idle';
+                } else {
+                    this.state = 'walking';
+                }
+            }
+        }
     }
 
     draw(cameraX) {
@@ -667,7 +687,7 @@ function checkCollisions() {
         player.vy = 0;
     }
 
-    // Prevent player from going below the canvas
+    // Prevent player from going below the ground
     if (player.y + player.height > GAME_HEIGHT - images.ground.height) {
         player.y = GAME_HEIGHT - images.ground.height - player.height;
         player.vy = 0;
@@ -691,7 +711,7 @@ function update(deltaTime, currentTime) {
         enemy.updateChase(player.x, player.y, deltaTime);
     });
 
-    // Prevent enemies from overlapping
+    // Prevent enemies from overlapping by resolving collisions
     resolveEnemyCollisions();
 
     coins.forEach(coin => coin.update());
@@ -711,21 +731,22 @@ function resolveEnemyCollisions() {
             let enemyB = enemies[j];
 
             if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in the X axis
+                // Calculate the overlap in the X-axis only
                 let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
 
-                // Resolve the collision by adjusting positions based on overlap
                 if (overlapX > 0) {
-                    // Move enemies apart equally
+                    // Determine which enemy is further to the left
                     if (enemyA.x < enemyB.x) {
+                        // Move enemyA to the left and enemyB to the right
                         enemyA.x -= overlapX / 2;
                         enemyB.x += overlapX / 2;
                     } else {
+                        // Move enemyA to the right and enemyB to the left
                         enemyA.x += overlapX / 2;
                         enemyB.x -= overlapX / 2;
                     }
 
-                    // Optional: Reverse direction to prevent sticking
+                    // Optionally, reverse their directions to add dynamic behavior
                     enemyA.vx *= -1;
                     enemyB.vx *= -1;
                 }
@@ -910,21 +931,22 @@ function resolveEnemyCollisions() {
             let enemyB = enemies[j];
 
             if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in the X axis
+                // Calculate the overlap in the X-axis only
                 let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
 
-                // Resolve the collision by adjusting positions based on overlap
                 if (overlapX > 0) {
-                    // Move enemies apart equally
+                    // Determine which enemy is further to the left
                     if (enemyA.x < enemyB.x) {
+                        // Move enemyA to the left and enemyB to the right
                         enemyA.x -= overlapX / 2;
                         enemyB.x += overlapX / 2;
                     } else {
+                        // Move enemyA to the right and enemyB to the left
                         enemyA.x += overlapX / 2;
                         enemyB.x -= overlapX / 2;
                     }
 
-                    // Optional: Reverse direction to prevent sticking
+                    // Optionally, reverse their directions to add dynamic behavior
                     enemyA.vx *= -1;
                     enemyB.vx *= -1;
                 }
