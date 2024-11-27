@@ -1,5 +1,6 @@
 // game.js
 
+// Get the canvas and context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -9,12 +10,11 @@ const GAME_HEIGHT = canvas.height; // 600
 
 // World dimensions
 const WORLD_WIDTH = 5000; // Total width of the game world in pixels
-const WORLD_HEIGHT = GAME_HEIGHT; // Matches the canvas height
 
 // Game settings
 const PLAYER_SPEED = 2; // Normal walking speed
 const SPRINT_MULTIPLIER = 1.5; // Sprint speed multiplier
-const PLAYER_JUMP_STRENGTH = 12; // Jump strength
+const PLAYER_JUMP_STRENGTH = 14; // Increased Jump Strength
 const GRAVITY = 0.5; // Gravity strength
 
 // Load images
@@ -35,21 +35,24 @@ const imageSources = {
     coinIcon: 'assets/images/coin-icon.png'
 };
 
-// Load all images using Promises
-const loadImages = () => {
-    const promises = Object.keys(imageSources).map(key => {
-        return new Promise((resolve, reject) => {
-            images[key] = new Image();
-            images[key].src = imageSources[key];
-            images[key].onload = () => resolve();
-            images[key].onerror = () => {
-                console.error(`Failed to load image: ${imageSources[key]}`);
-                resolve(); // Resolve even if an image fails to load to prevent blocking
-            };
-        });
-    });
-    return Promise.all(promises);
-};
+// Load all images
+let loadedImages = 0;
+const totalImages = Object.keys(imageSources).length;
+
+for (let key in imageSources) {
+    images[key] = new Image();
+    images[key].src = imageSources[key];
+    images[key].onload = () => {
+        loadedImages++;
+        if (loadedImages === totalImages) {
+            // Enable the start button after all images are loaded
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.disabled = false;
+            }
+        }
+    };
+}
 
 // Load audio (Including Background Music)
 const sounds = {};
@@ -66,17 +69,29 @@ let isMusicOn = true;
 let isSoundEffectsOn = true;
 
 // Load all sounds
-const loadSounds = () => {
-    Object.keys(soundSources).forEach(key => {
-        sounds[key] = new Audio(soundSources[key]);
-        if (key === 'background') {
-            sounds[key].loop = true; // Loop the background music
-            sounds[key].volume = 0.4; // Set volume to 40%
-        } else {
-            sounds[key].volume = 1.0; // Default volume for sound effects
-        }
-    });
-};
+for (let key in soundSources) {
+    sounds[key] = new Audio(soundSources[key]);
+    if (key === 'background') {
+        sounds[key].loop = true; // Loop the background music
+        sounds[key].volume = 0.4; // Set volume to 40%
+    } else {
+        sounds[key].volume = 1.0; // Default volume for sound effects
+    }
+}
+
+// Flags to track game state
+let player;
+let enemies = [];
+let coins = [];
+let platforms = [];
+let gameOver = false;
+let win = false;
+let particles = []; // Declare particles once
+let cameraX = 0; // Camera offset
+
+// Deadzone settings
+const DEADZONE_WIDTH = 200; // Width of the deadzone from the left
+const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of deadzone
 
 // Handle user input
 const keys = {
@@ -86,56 +101,6 @@ const keys = {
     punch: false,
     sprint: false
 };
-
-// Event listeners for key presses
-document.addEventListener('keydown', (e) => {
-    switch(e.code) {
-        case 'KeyA':
-            keys.left = true;
-            break;
-        case 'KeyD':
-            keys.right = true;
-            break;
-        case 'KeyW':
-        case 'Space':
-            keys.up = true;
-            break;
-        case 'ControlLeft':
-        case 'ControlRight':
-            if (!keys.punch) { // Prevent setting punch to true multiple times
-                keys.punch = true;
-                player.initiatePunch();
-            }
-            break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-            keys.sprint = true;
-            break;
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    switch(e.code) {
-        case 'KeyA':
-            keys.left = false;
-            break;
-        case 'KeyD':
-            keys.right = false;
-            break;
-        case 'KeyW':
-        case 'Space':
-            keys.up = false;
-            break;
-        case 'ControlLeft':
-        case 'ControlRight':
-            keys.punch = false;
-            break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-            keys.sprint = false;
-            break;
-    }
-});
 
 // Particle Class
 class Particle {
@@ -160,7 +125,7 @@ class Particle {
         ctx.globalAlpha = this.alpha;
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.arc(this.x - cameraX, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
@@ -175,7 +140,7 @@ class Platform {
         this.height = height;
     }
 
-    draw(cameraX) {
+    draw() {
         ctx.drawImage(images.platform, this.x - cameraX, this.y, this.width, this.height);
     }
 }
@@ -184,8 +149,7 @@ class Platform {
 class Player {
     constructor() {
         this.x = 100; // World X
-        // Ground level will be set dynamically after images are loaded
-        this.y = 0; // Temporary, will be updated in init()
+        this.y = GAME_HEIGHT - 150; // World Y (above ground or on platform)
         this.width = 50;
         this.height = 50;
         this.vx = 0;
@@ -294,29 +258,9 @@ class Player {
             this.x = WORLD_WIDTH - this.width;
             this.vx = 0;
         }
-
-        // Prevent player from going above the canvas
-        if (this.y < 0) {
-            this.y = 0;
-            this.vy = 0;
-        }
-
-        // Prevent player from going below the ground
-        if (this.y + this.height > GAME_HEIGHT - groundHeight) { // groundHeight defined in init()
-            this.y = GAME_HEIGHT - groundHeight - this.height;
-            this.vy = 0;
-            this.onGround = true;
-            if (!this.isPunching) {
-                if (this.vx === 0) {
-                    this.state = 'idle';
-                } else {
-                    this.state = 'walking';
-                }
-            }
-        }
     }
 
-    draw(cameraX) {
+    draw() {
         let img;
         switch(this.state) {
             case 'idle':
@@ -357,10 +301,6 @@ class Player {
             this.animationFrame = 0;
             this.frameCount = 0;
         }
-
-        // Optional: Draw collision box for debugging
-        // ctx.strokeStyle = 'red';
-        // ctx.strokeRect(this.x - cameraX, this.y, this.width, this.height);
     }
 }
 
@@ -440,7 +380,7 @@ class Enemy {
         }
     }
 
-    draw(cameraX) {
+    draw() {
         if (!this.alive) return;
 
         // Determine which walk image to use based on animation frame
@@ -473,10 +413,6 @@ class Enemy {
             this.animationFrame = 0;
             this.frameCount = 0;
         }
-
-        // Optional: Draw collision box for debugging
-        // ctx.strokeStyle = 'blue';
-        // ctx.strokeRect(this.x - cameraX, this.y, this.width, this.height);
     }
 }
 
@@ -500,76 +436,208 @@ class Coin {
         this.y = this.baseY + Math.sin(this.bobAngle) * this.bobHeight;
     }
 
-    draw(cameraX) {
+    draw() {
         if (!this.collected) {
             ctx.drawImage(images.coin, this.x - cameraX, this.y, this.width, this.height);
         }
     }
 }
 
-// Initialize game objects
-let player;
-let enemies = [];
-let coins = [];
-let platforms = [];
-let gameOver = false;
-let win = false;
-let particles = [];
-let cameraX = 0; // Camera offset
-let groundHeight = 0; // To be set after images are loaded
+// Function to create a particle
+function createParticle(x, y, color = '#FFD700') { // Default color gold
+    particles.push(new Particle(x, y, color));
+}
 
-// Deadzone settings
-const DEADZONE_WIDTH = 200; // Width of the deadzone from the left
-const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of deadzone
+// Update particles
+function updateParticles(deltaTime) {
+    particles.forEach((particle, index) => {
+        particle.update();
+        if (particle.alpha <= 0) {
+            particles.splice(index, 1);
+        }
+    });
+}
+
+// Update HUD
+function updateHUD() {
+    const coinCounter = document.getElementById('coinCounter');
+    coinCounter.innerHTML = `<img src="assets/images/coin-icon.png" alt="Coin" /> Coins: ${player.coinsCollected}/20`;
+
+    // Update Stamina Meter
+    const staminaFill = document.getElementById('staminaFill');
+    staminaFill.style.width = `${player.stamina}%`;
+
+    // Change color based on stamina level
+    if (player.stamina > 60) {
+        staminaFill.style.backgroundColor = '#00ff00'; // Green
+    } else if (player.stamina > 30) {
+        staminaFill.style.backgroundColor = '#ffff00'; // Yellow
+    } else {
+        staminaFill.style.backgroundColor = '#ff0000'; // Red
+    }
+}
+
+// Render Game
+function render() {
+    // Clear canvas
+    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Draw seamless background
+    const bgWidth = images.background.width;
+    const bgHeight = images.background.height;
+    const bgCount = Math.ceil(GAME_WIDTH / bgWidth) + 1;
+
+    for (let i = 0; i < bgCount; i++) {
+        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - 50);
+    }
+
+    // Draw ground
+    const groundWidth = images.ground.width;
+    const groundHeight = images.ground.height;
+    const groundCount = Math.ceil(GAME_WIDTH / groundWidth) + 1;
+
+    for (let i = 0; i < groundCount; i++) {
+        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - 50, groundWidth, groundHeight);
+    }
+
+    // Draw platforms
+    platforms.forEach(platform => platform.draw());
+
+    // Draw coins
+    coins.forEach(coin => coin.draw());
+
+    // Draw enemies
+    enemies.forEach(enemy => enemy.draw());
+
+    // Draw player
+    player.draw();
+
+    // Draw particles
+    particles.forEach(particle => particle.draw());
+
+    // Update HUD
+    updateHUD();
+}
+
+// Display End Message
+function displayEndMessage() {
+    const endMessage = document.getElementById('endMessage');
+
+    if (win) {
+        endMessage.innerHTML = `
+            <p>You Collected All Coins! You Win!</p>
+            <button onclick="restartGame()">Restart</button>
+        `;
+    } else {
+        endMessage.innerHTML = `
+            <p>Game Over!</p>
+            <button onclick="restartGame()">Try Again</button>
+        `;
+    }
+
+    endMessage.classList.add('show');
+}
+
+// Restart Game
+function restartGame() {
+    // Reset game state
+    player = new Player();
+    enemies = [];
+    coins = [];
+    platforms = [];
+    particles = [];
+    gameOver = false;
+    win = false;
+    cameraX = 0;
+
+    // Initialize game objects
+    init();
+
+    // Hide end message
+    const endMessage = document.getElementById('endMessage');
+    if (endMessage) {
+        endMessage.classList.remove('show');
+    }
+
+    // Reset background music
+    if (isMusicOn) {
+        sounds.background.currentTime = 0;
+        sounds.background.play();
+    }
+
+    // Reset lastTime for deltaTime calculation
+    lastTime = 0;
+
+    // Restart the game loop
+    requestAnimationFrame(gameLoop);
+}
+
+// Toggle Music Function
+function toggleMusic() {
+    const toggleMusicBtn = document.getElementById('toggleMusic');
+    if (isMusicOn) {
+        sounds.background.pause();
+        isMusicOn = false;
+        toggleMusicBtn.textContent = 'Music: Off';
+        toggleMusicBtn.classList.remove('active');
+    } else {
+        sounds.background.play();
+        isMusicOn = true;
+        toggleMusicBtn.textContent = 'Music: On';
+        toggleMusicBtn.classList.add('active');
+    }
+}
+
+// Toggle Sound Effects Function
+function toggleSoundEffects() {
+    const toggleSoundBtn = document.getElementById('toggleSound');
+    if (isSoundEffectsOn) {
+        isSoundEffectsOn = false;
+        toggleSoundBtn.textContent = 'Sound Effects: Off';
+        toggleSoundBtn.classList.remove('active');
+    } else {
+        isSoundEffectsOn = true;
+        toggleSoundBtn.textContent = 'Sound Effects: On';
+        toggleSoundBtn.classList.add('active');
+    }
+}
 
 // Initialize the game
 function init() {
-    groundHeight = images.ground.height;
-
     player = new Player();
-    player.y = GAME_HEIGHT - groundHeight - player.height; // Position player on the ground
 
-    // Initialize platforms, enemies, and coins
-    platforms = createPlatforms();
-    enemies = createEnemies();
-    coins = createCoins();
-}
+    // Create platforms first (needed for coin placement on platforms)
+    platforms = []; // Reset platforms array
+    platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
+    platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20)); // Platform without enemy
+    platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
+    platforms.push(new Platform(3000, GAME_HEIGHT - 180, 170, 20));
+    platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
+    platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
 
-// Create Platforms
-function createPlatforms() {
-    return [
-        new Platform(400, GAME_HEIGHT - groundHeight - 150, 150, 20),
-        new Platform(700, GAME_HEIGHT - groundHeight - 220, 200, 20),
-        new Platform(1000, GAME_HEIGHT - groundHeight - 180, 170, 20),
-        new Platform(1300, GAME_HEIGHT - groundHeight - 150, 150, 20), // Platform without enemy
-        new Platform(1600, GAME_HEIGHT - groundHeight - 180, 170, 20),
-        new Platform(2000, GAME_HEIGHT - groundHeight - 150, 150, 20),
-        new Platform(2500, GAME_HEIGHT - groundHeight - 220, 200, 20),
-        new Platform(3000, GAME_HEIGHT - groundHeight - 180, 170, 20),
-        new Platform(3500, GAME_HEIGHT - groundHeight - 150, 150, 20),
-        new Platform(4000, GAME_HEIGHT - groundHeight - 180, 170, 20)
-    ];
-}
+    // Calculate enemy Y-position to be on the ground
+    const ENEMY_HEIGHT = 50; // Enemy height
+    const enemyY = GAME_HEIGHT - 50 - ENEMY_HEIGHT; // Ground level is at GAME_HEIGHT - 50
 
-// Create Enemies
-function createEnemies() {
-    return [
-        new Enemy(500, player.y),
-        new Enemy(800, player.y),
-        new Enemy(1100, player.y),
-        new Enemy(1300, player.y), // Enemy on ground
-        new Enemy(1600, player.y), // Another enemy on ground
-        new Enemy(2000, player.y),
-        new Enemy(2500, player.y),
-        new Enemy(3000, player.y),
-        new Enemy(3500, player.y),
-        new Enemy(4000, player.y)
-    ];
-}
+    // Create enemies at specific positions (on ground)
+    enemies = []; // Reset enemies array
+    enemies.push(new Enemy(500, enemyY));
+    enemies.push(new Enemy(800, enemyY));
+    enemies.push(new Enemy(1100, enemyY));
+    enemies.push(new Enemy(1300, enemyY));
+    enemies.push(new Enemy(1600, enemyY));
+    enemies.push(new Enemy(2000, enemyY));
+    enemies.push(new Enemy(2500, enemyY));
+    enemies.push(new Enemy(3000, enemyY));
+    enemies.push(new Enemy(3500, enemyY));
+    enemies.push(new Enemy(4000, enemyY));
 
-// Create Coins
-function createCoins() {
-    const coinList = [];
+    // Place 20 coins strategically (some on ground, some on platforms)
+    coins = []; // Reset coins array
     for (let i = 1; i <= 20; i++) {
         let coinX = 200 + i * 200; // Increased spacing to spread out coins
 
@@ -581,28 +649,72 @@ function createCoins() {
                 let platform = platforms[i % platforms.length];
                 coinY = platform.y - 40; // Place the coin slightly above the platform
             } else {
-                coinY = GAME_HEIGHT - groundHeight - 200;
+                coinY = GAME_HEIGHT - 200;
             }
         } else {
-            coinY = GAME_HEIGHT - groundHeight - 200; // On ground
+            coinY = GAME_HEIGHT - 100; // On ground
         }
 
-        coinList.push(new Coin(coinX, coinY));
+        coins.push(new Coin(coinX, coinY));
     }
-    return coinList;
+
+    // Set up key event listeners after initializing the player
+    setupKeyListeners();
+
+    // Start the game loop
+    requestAnimationFrame(gameLoop);
 }
 
-// Create a particle
-function createParticle(x, y, color = '#FFD700') { // Default color gold
-    particles.push(new Particle(x, y, color));
-}
+// Function to set up key event listeners
+function setupKeyListeners() {
+    document.addEventListener('keydown', (e) => {
+        switch(e.code) {
+            case 'KeyA':
+                keys.left = true;
+                break;
+            case 'KeyD':
+                keys.right = true;
+                break;
+            case 'KeyW':
+            case 'Space':
+                keys.up = true;
+                break;
+            case 'ControlLeft':
+            case 'ControlRight':
+                if (!keys.punch) { // Prevent setting punch to true multiple times
+                    keys.punch = true;
+                    player.initiatePunch();
+                }
+                break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                keys.sprint = true;
+                player.isSprinting = true;
+                break;
+        }
+    });
 
-// Update particles
-function updateParticles(deltaTime) {
-    particles.forEach((particle, index) => {
-        particle.update();
-        if (particle.alpha <= 0) {
-            particles.splice(index, 1);
+    document.addEventListener('keyup', (e) => {
+        switch(e.code) {
+            case 'KeyA':
+                keys.left = false;
+                break;
+            case 'KeyD':
+                keys.right = false;
+                break;
+            case 'KeyW':
+            case 'Space':
+                keys.up = false;
+                break;
+            case 'ControlLeft':
+            case 'ControlRight':
+                keys.punch = false;
+                break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                keys.sprint = false;
+                player.isSprinting = false;
+                break;
         }
     });
 }
@@ -681,8 +793,8 @@ function checkCollisions() {
     });
 
     // Check collision with ground
-    if (player.y + player.height >= GAME_HEIGHT - groundHeight) { // groundHeight defined in init()
-        player.y = GAME_HEIGHT - groundHeight - player.height;
+    if (player.y + player.height >= GAME_HEIGHT - 50) { // Ground is at GAME_HEIGHT - 50
+        player.y = GAME_HEIGHT - 50 - player.height;
         player.vy = 0;
         player.onGround = true;
         if (!player.isPunching) {
@@ -692,19 +804,6 @@ function checkCollisions() {
                 player.state = 'walking';
             }
         }
-    }
-
-    // Prevent player from going above the canvas
-    if (player.y < 0) {
-        player.y = 0;
-        player.vy = 0;
-    }
-
-    // Prevent player from going below the ground
-    if (player.y + player.height > GAME_HEIGHT - groundHeight) {
-        player.y = GAME_HEIGHT - groundHeight - player.height;
-        player.vy = 0;
-        player.onGround = true;
     }
 }
 
@@ -724,9 +823,6 @@ function update(deltaTime, currentTime) {
         enemy.updateChase(player.x, player.y, deltaTime);
     });
 
-    // Prevent enemies from overlapping by resolving collisions
-    resolveEnemyCollisions();
-
     coins.forEach(coin => coin.update());
 
     // Platforms are static; no update needed
@@ -736,281 +832,72 @@ function update(deltaTime, currentTime) {
     updateParticles(deltaTime);
 
     // Update camera position based on player position
-    updateCamera();
-}
+    // Deadzone logic to keep the player within a central area before scrolling
+    const cameraOffset = DEADZONE_RIGHT_BOUND; // Define how far the player can move before the camera scrolls
 
-// Resolve Collisions Between Enemies to Prevent Overlapping
-function resolveEnemyCollisions() {
-    for (let i = 0; i < enemies.length; i++) {
-        for (let j = i + 1; j < enemies.length; j++) {
-            let enemyA = enemies[i];
-            let enemyB = enemies[j];
-
-            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in the X-axis only
-                let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
-
-                if (overlapX > 0) {
-                    // Determine which enemy is further to the left
-                    if (enemyA.x < enemyB.x) {
-                        // Move enemyA to the left and enemyB to the right
-                        enemyA.x -= overlapX / 2;
-                        enemyB.x += overlapX / 2;
-                    } else {
-                        // Move enemyA to the right and enemyB to the left
-                        enemyA.x += overlapX / 2;
-                        enemyB.x -= overlapX / 2;
-                    }
-
-                    // Reverse their directions to add dynamic behavior
-                    enemyA.vx *= -1;
-                    enemyB.vx *= -1;
-                }
-            }
-        }
-    }
-}
-
-// Update Camera Position
-function updateCamera() {
-    // Define deadzone boundaries
-    const deadzoneLeft = DEADZONE_WIDTH;
-    const deadzoneRight = GAME_WIDTH - DEADZONE_WIDTH;
-
-    if (player.x - cameraX > deadzoneRight) {
-        cameraX = player.x - deadzoneRight;
-    } else if (player.x - cameraX < deadzoneLeft) {
-        cameraX = player.x - deadzoneLeft;
+    if (player.x - cameraX > cameraOffset) {
+        cameraX = player.x - cameraOffset;
     }
 
-    // Clamp cameraX within world bounds
-    if (cameraX < 0) cameraX = 0;
+    // Prevent camera from moving beyond the world bounds
     if (cameraX + GAME_WIDTH > WORLD_WIDTH) {
         cameraX = WORLD_WIDTH - GAME_WIDTH;
     }
+
+    // Prevent camera from moving left beyond the world start
+    if (cameraX < 0) cameraX = 0;
 }
 
-// Update HUD
-function updateHUD() {
-    const coinCounter = document.getElementById('coinCounter');
-    coinCounter.innerHTML = `<img src="assets/images/coin-icon.png" alt="Coin" /> Coins: ${player.coinsCollected}/20`;
+// Start Game Function
+function startGame() {
+    console.log("Start Game button clicked"); // Debugging line
 
-    // Update Stamina Meter
-    const staminaFill = document.getElementById('staminaFill');
-    staminaFill.style.width = `${player.stamina}%`;
-
-    // Change color based on stamina level
-    if (player.stamina > 60) {
-        staminaFill.style.backgroundColor = '#00ff00'; // Green
-    } else if (player.stamina > 30) {
-        staminaFill.style.backgroundColor = '#ffff00'; // Yellow
-    } else {
-        staminaFill.style.backgroundColor = '#ff0000'; // Red
-    }
-}
-
-// Render Game
-function render() {
-    // Clear canvas
-    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Draw seamless background
-    const bgWidth = images.background.width;
-    const bgHeight = images.background.height;
-    const bgCount = Math.ceil(GAME_WIDTH / bgWidth) + 1;
-
-    for (let i = 0; i < bgCount; i++) {
-        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - groundHeight);
-    }
-
-    // Draw ground
-    const groundWidth = images.ground.width;
-    const groundHeightLocal = images.ground.height;
-    const groundCount = Math.ceil(GAME_WIDTH / groundWidth) + 1;
-
-    for (let i = 0; i < groundCount; i++) {
-        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - groundHeightLocal, groundWidth, groundHeightLocal);
-    }
-
-    // Draw platforms
-    platforms.forEach(platform => platform.draw(cameraX));
-
-    // Draw coins
-    coins.forEach(coin => coin.draw(cameraX));
-
-    // Draw enemies
-    enemies.forEach(enemy => enemy.draw(cameraX));
-
-    // Draw player
-    player.draw(cameraX);
-
-    // Draw particles
-    particles.forEach(particle => particle.draw());
-
-    // Update HUD
-    updateHUD();
-
-    // Optional: Draw collision boxes for debugging
-    // Draw player collision box
-    // ctx.strokeStyle = 'red';
-    // ctx.strokeRect(player.x - cameraX, player.y, player.width, player.height);
-    // Draw enemies collision boxes
-    /*
-    enemies.forEach(enemy => {
-        if (enemy.alive) {
-            ctx.strokeStyle = 'blue';
-            ctx.strokeRect(enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
-        }
-    });
-    */
-}
-
-// Display End Message
-function displayEndMessage() {
-    const endMessage = document.getElementById('endMessage');
-
-    if (win) {
-        endMessage.innerHTML = `
-            <p>You Collected All Coins! You Win!</p>
-            <button onclick="restartGame()">Restart</button>
-        `;
-    } else {
-        endMessage.innerHTML = `
-            <p>Game Over!</p>
-            <button onclick="restartGame()">Try Again</button>
-        `;
-    }
-
-    endMessage.classList.add('show');
-}
-
-// Toggle Music Function
-function toggleMusic() {
-    const toggleMusicBtn = document.getElementById('toggleMusic');
-    if (isMusicOn) {
-        sounds.background.pause();
-        isMusicOn = false;
-        toggleMusicBtn.textContent = 'Music: Off';
-        toggleMusicBtn.classList.remove('active');
-    } else {
-        sounds.background.play();
-        isMusicOn = true;
-        toggleMusicBtn.textContent = 'Music: On';
-        toggleMusicBtn.classList.add('active');
-    }
-}
-
-// Toggle Sound Effects Function
-function toggleSoundEffects() {
-    const toggleSoundBtn = document.getElementById('toggleSound');
-    if (isSoundEffectsOn) {
-        isSoundEffectsOn = false;
-        toggleSoundBtn.textContent = 'Sound Effects: Off';
-        toggleSoundBtn.classList.remove('active');
-    } else {
-        isSoundEffectsOn = true;
-        toggleSoundBtn.textContent = 'Sound Effects: On';
-        toggleSoundBtn.classList.add('active');
-    }
-}
-
-// Add Event Listeners for Toggle Buttons and Start Button
-document.addEventListener('DOMContentLoaded', () => {
-    const toggleMusicBtn = document.getElementById('toggleMusic');
-    const toggleSoundBtn = document.getElementById('toggleSound');
-    const startButton = document.getElementById('startButton');
+    // Hide Start Screen
     const startScreen = document.getElementById('startScreen');
+    startScreen.classList.add('hidden');
 
-    toggleMusicBtn.addEventListener('click', toggleMusic);
-    toggleSoundBtn.addEventListener('click', toggleSoundEffects);
+    // Show Game Elements
+    const gameContainer = document.getElementById('gameContainer');
+    const controlsContainer = document.getElementById('controlsContainer');
+    const audioControls = document.getElementById('audioControls');
 
-    startButton.addEventListener('click', () => {
-        // Hide Start Screen
-        startScreen.style.display = 'none';
-
-        // Play background music if music is on
-        if (isMusicOn && sounds.background) {
-            sounds.background.play().catch(error => {
-                console.error('Failed to play background music:', error);
-            });
-        }
-
-        // Start the game loop
-        lastTime = performance.now();
-        requestAnimationFrame(gameLoop);
-    });
-});
-
-// Restart Game
-function restartGame() {
-    // Reset game state
-    player = new Player();
-    enemies = createEnemies();
-    coins = createCoins();
-    platforms = createPlatforms();
-    particles = [];
-    gameOver = false;
-    win = false;
-    cameraX = 0;
-
-    // Position player on the ground
-    player.y = GAME_HEIGHT - groundHeight - player.height;
-
-    // Hide end message
-    const endMessage = document.getElementById('endMessage');
-    if (endMessage) {
-        endMessage.classList.remove('show');
+    if (gameContainer && controlsContainer && audioControls) {
+        gameContainer.classList.remove('hidden');
+        controlsContainer.classList.remove('hidden');
+        audioControls.classList.remove('hidden');
     }
 
-    // Restart the background music if it's on
+    // Start Background Music
     if (isMusicOn && sounds.background) {
-        sounds.background.currentTime = 0;
-        sounds.background.play().catch(error => {
-            console.error('Failed to play background music:', error);
+        sounds.background.play().catch((error) => {
+            console.error("Failed to play background music:", error);
         });
     }
 
-    // Restart the game loop
-    lastTime = performance.now(); // Reset lastTime for deltaTime calculation
-    requestAnimationFrame(gameLoop);
+    // Initialize Game Objects
+    init();
 }
 
-// Resolve Collisions Between Enemies to Prevent Overlapping
-function resolveEnemyCollisions() {
-    for (let i = 0; i < enemies.length; i++) {
-        for (let j = i + 1; j < enemies.length; j++) {
-            let enemyA = enemies[i];
-            let enemyB = enemies[j];
+// Add Event Listeners for Toggle Buttons
+function setupAudioControls() {
+    const toggleMusicBtn = document.getElementById('toggleMusic');
+    const toggleSoundBtn = document.getElementById('toggleSound');
 
-            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in the X-axis only
-                let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
-
-                if (overlapX > 0) {
-                    // Determine which enemy is further to the left
-                    if (enemyA.x < enemyB.x) {
-                        // Move enemyA to the left and enemyB to the right
-                        enemyA.x -= overlapX / 2;
-                        enemyB.x += overlapX / 2;
-                    } else {
-                        // Move enemyA to the right and enemyB to the left
-                        enemyA.x += overlapX / 2;
-                        enemyB.x -= overlapX / 2;
-                    }
-
-                    // Reverse their directions to add dynamic behavior
-                    enemyA.vx *= -1;
-                    enemyB.vx *= -1;
-                }
-            }
-        }
+    if (toggleMusicBtn && toggleSoundBtn) {
+        toggleMusicBtn.addEventListener('click', toggleMusic);
+        toggleSoundBtn.addEventListener('click', toggleSoundEffects);
     }
 }
 
-// Load all assets and initialize the game
-loadImages()
-    .then(() => {
-        loadSounds();
-        init();
-    })
-    .catch(err => console.error('Error loading assets:', err));
+// Add Event Listener for Start Button
+document.addEventListener('DOMContentLoaded', () => {
+    const startButton = document.getElementById('startButton');
+    // Disable the start button until images are loaded
+    startButton.disabled = true;
+
+    // Add click event listener to start the game
+    startButton.addEventListener('click', startGame);
+
+    // Setup audio controls (buttons are hidden initially)
+    setupAudioControls();
+});
