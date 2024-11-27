@@ -8,16 +8,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="gameContainer">
+    <!-- Start Screen Overlay -->
+    <div id="startScreen" class="overlay">
+        <h1>Retro Turtle Platformer</h1>
+        <button id="startButton">Start Game</button>
+    </div>
+
+    <div id="gameContainer" class="hidden">
         <canvas id="gameCanvas" width="1200" height="600"></canvas>
-        
-        <!-- Start Screen Overlay -->
-        <div id="startScreen">
-            <button id="startButton">Start Game</button>
-        </div>
-        
         <div id="hud">
-            <div id="coinCounter"><img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20</div>
+            <div id="coinCounter">Coins: 0/20</div>
             <div id="staminaMeter">
                 <div id="staminaFill"></div>
             </div>
@@ -26,8 +26,9 @@
             <!-- End game messages will appear here -->
         </div>
     </div>
+
     <!-- Controls Section -->
-    <div id="controlsContainer">
+    <div id="controlsContainer" class="hidden">
         <h2>Controls</h2>
         <div class="control">
             <span class="key">A / D</span>
@@ -46,11 +47,13 @@
             <span class="action">Sprint</span>
         </div>
     </div>
-    <!-- New Toggle Buttons -->
-    <div id="audioControls">
-        <button id="toggleMusic">Music: On</button>
-        <button id="toggleSound">Sound Effects: On</button>
+
+    <!-- Audio Controls Section -->
+    <div id="audioControls" class="hidden">
+        <button id="toggleMusic" class="active">Music: On</button>
+        <button id="toggleSound" class="active">Sound Effects: On</button>
     </div>
+
     <script src="game.js"></script>
 </body>
 </html>
