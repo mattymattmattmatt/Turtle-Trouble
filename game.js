@@ -711,13 +711,12 @@ function resolveEnemyCollisions() {
             let enemyB = enemies[j];
 
             if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in both axes
+                // Calculate the overlap in the X axis
                 let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
-                let overlapY = Math.min(enemyA.y + enemyA.height, enemyB.y + enemyB.height) - Math.max(enemyA.y, enemyB.y);
 
-                // Resolve the collision by adjusting positions based on minimal overlap
-                if (overlapX < overlapY) {
-                    // Adjust along X axis
+                // Resolve the collision by adjusting positions based on overlap
+                if (overlapX > 0) {
+                    // Move enemies apart equally
                     if (enemyA.x < enemyB.x) {
                         enemyA.x -= overlapX / 2;
                         enemyB.x += overlapX / 2;
@@ -725,20 +724,11 @@ function resolveEnemyCollisions() {
                         enemyA.x += overlapX / 2;
                         enemyB.x -= overlapX / 2;
                     }
-                } else {
-                    // Adjust along Y axis
-                    if (enemyA.y < enemyB.y) {
-                        enemyA.y -= overlapY / 2;
-                        enemyB.y += overlapY / 2;
-                    } else {
-                        enemyA.y += overlapY / 2;
-                        enemyB.y -= overlapY / 2;
-                    }
-                }
 
-                // Optionally, reverse direction upon collision to prevent sticking
-                enemyA.vx *= -1;
-                enemyB.vx *= -1;
+                    // Optional: Reverse direction to prevent sticking
+                    enemyA.vx *= -1;
+                    enemyB.vx *= -1;
+                }
             }
         }
     }
@@ -920,13 +910,12 @@ function resolveEnemyCollisions() {
             let enemyB = enemies[j];
 
             if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in both axes
+                // Calculate the overlap in the X axis
                 let overlapX = Math.min(enemyA.x + enemyA.width, enemyB.x + enemyB.width) - Math.max(enemyA.x, enemyB.x);
-                let overlapY = Math.min(enemyA.y + enemyA.height, enemyB.y + enemyB.height) - Math.max(enemyA.y, enemyB.y);
 
-                // Resolve the collision by adjusting positions based on minimal overlap
-                if (overlapX < overlapY) {
-                    // Adjust along X axis
+                // Resolve the collision by adjusting positions based on overlap
+                if (overlapX > 0) {
+                    // Move enemies apart equally
                     if (enemyA.x < enemyB.x) {
                         enemyA.x -= overlapX / 2;
                         enemyB.x += overlapX / 2;
@@ -934,20 +923,11 @@ function resolveEnemyCollisions() {
                         enemyA.x += overlapX / 2;
                         enemyB.x -= overlapX / 2;
                     }
-                } else {
-                    // Adjust along Y axis
-                    if (enemyA.y < enemyB.y) {
-                        enemyA.y -= overlapY / 2;
-                        enemyB.y += overlapY / 2;
-                    } else {
-                        enemyA.y += overlapY / 2;
-                        enemyB.y -= overlapY / 2;
-                    }
-                }
 
-                // Optionally, reverse direction upon collision to prevent sticking
-                enemyA.vx *= -1;
-                enemyB.vx *= -1;
+                    // Optional: Reverse direction to prevent sticking
+                    enemyA.vx *= -1;
+                    enemyB.vx *= -1;
+                }
             }
         }
     }
