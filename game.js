@@ -554,16 +554,16 @@ function createPlatforms() {
 // Create Enemies
 function createEnemies() {
     return [
-        new Enemy(500, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(800, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(1100, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(1300, GAME_HEIGHT - groundHeight - 100), // Enemy on ground
-        new Enemy(1600, GAME_HEIGHT - groundHeight - 100), // Another enemy on ground
-        new Enemy(2000, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(2500, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(3000, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(3500, GAME_HEIGHT - groundHeight - 100),
-        new Enemy(4000, GAME_HEIGHT - groundHeight - 100)
+        new Enemy(500, player.y),
+        new Enemy(800, player.y),
+        new Enemy(1100, player.y),
+        new Enemy(1300, player.y), // Enemy on ground
+        new Enemy(1600, player.y), // Another enemy on ground
+        new Enemy(2000, player.y),
+        new Enemy(2500, player.y),
+        new Enemy(3000, player.y),
+        new Enemy(3500, player.y),
+        new Enemy(4000, player.y)
     ];
 }
 
@@ -681,7 +681,7 @@ function checkCollisions() {
     });
 
     // Check collision with ground
-    if (player.y + player.height >= GAME_HEIGHT - groundHeight) { // Ground height from image
+    if (player.y + player.height >= GAME_HEIGHT - groundHeight) { // groundHeight defined in init()
         player.y = GAME_HEIGHT - groundHeight - player.height;
         player.vy = 0;
         player.onGround = true;
@@ -762,7 +762,7 @@ function resolveEnemyCollisions() {
                         enemyB.x -= overlapX / 2;
                     }
 
-                    // Optionally, reverse their directions to add dynamic behavior
+                    // Reverse their directions to add dynamic behavior
                     enemyA.vx *= -1;
                     enemyB.vx *= -1;
                 }
