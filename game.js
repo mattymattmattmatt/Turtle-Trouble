@@ -184,7 +184,8 @@ class Platform {
 class Player {
     constructor() {
         this.x = 100; // World X
-        this.y = GAME_HEIGHT - images.ground.height - 100; // Adjusted to use ground height
+        // Ground level will be set dynamically after images are loaded
+        this.y = 0; // Temporary, will be updated in init()
         this.width = 50;
         this.height = 50;
         this.vx = 0;
@@ -301,8 +302,8 @@ class Player {
         }
 
         // Prevent player from going below the ground
-        if (this.y + this.height > GAME_HEIGHT - images.ground.height) { // Ground height from image
-            this.y = GAME_HEIGHT - images.ground.height - this.height;
+        if (this.y + this.height > GAME_HEIGHT - groundHeight) { // groundHeight defined in init()
+            this.y = GAME_HEIGHT - groundHeight - this.height;
             this.vy = 0;
             this.onGround = true;
             if (!this.isPunching) {
@@ -356,6 +357,10 @@ class Player {
             this.animationFrame = 0;
             this.frameCount = 0;
         }
+
+        // Optional: Draw collision box for debugging
+        // ctx.strokeStyle = 'red';
+        // ctx.strokeRect(this.x - cameraX, this.y, this.width, this.height);
     }
 }
 
@@ -468,6 +473,10 @@ class Enemy {
             this.animationFrame = 0;
             this.frameCount = 0;
         }
+
+        // Optional: Draw collision box for debugging
+        // ctx.strokeStyle = 'blue';
+        // ctx.strokeRect(this.x - cameraX, this.y, this.width, this.height);
     }
 }
 
@@ -507,6 +516,7 @@ let gameOver = false;
 let win = false;
 let particles = [];
 let cameraX = 0; // Camera offset
+let groundHeight = 0; // To be set after images are loaded
 
 // Deadzone settings
 const DEADZONE_WIDTH = 200; // Width of the deadzone from the left
@@ -514,7 +524,10 @@ const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of d
 
 // Initialize the game
 function init() {
+    groundHeight = images.ground.height;
+
     player = new Player();
+    player.y = GAME_HEIGHT - groundHeight - player.height; // Position player on the ground
 
     // Initialize platforms, enemies, and coins
     platforms = createPlatforms();
@@ -525,32 +538,32 @@ function init() {
 // Create Platforms
 function createPlatforms() {
     return [
-        new Platform(400, GAME_HEIGHT - images.ground.height - 150, 150, 20),
-        new Platform(700, GAME_HEIGHT - images.ground.height - 220, 200, 20),
-        new Platform(1000, GAME_HEIGHT - images.ground.height - 180, 170, 20),
-        new Platform(1300, GAME_HEIGHT - images.ground.height - 150, 150, 20), // Platform without enemy
-        new Platform(1600, GAME_HEIGHT - images.ground.height - 180, 170, 20),
-        new Platform(2000, GAME_HEIGHT - images.ground.height - 150, 150, 20),
-        new Platform(2500, GAME_HEIGHT - images.ground.height - 220, 200, 20),
-        new Platform(3000, GAME_HEIGHT - images.ground.height - 180, 170, 20),
-        new Platform(3500, GAME_HEIGHT - images.ground.height - 150, 150, 20),
-        new Platform(4000, GAME_HEIGHT - images.ground.height - 180, 170, 20)
+        new Platform(400, GAME_HEIGHT - groundHeight - 150, 150, 20),
+        new Platform(700, GAME_HEIGHT - groundHeight - 220, 200, 20),
+        new Platform(1000, GAME_HEIGHT - groundHeight - 180, 170, 20),
+        new Platform(1300, GAME_HEIGHT - groundHeight - 150, 150, 20), // Platform without enemy
+        new Platform(1600, GAME_HEIGHT - groundHeight - 180, 170, 20),
+        new Platform(2000, GAME_HEIGHT - groundHeight - 150, 150, 20),
+        new Platform(2500, GAME_HEIGHT - groundHeight - 220, 200, 20),
+        new Platform(3000, GAME_HEIGHT - groundHeight - 180, 170, 20),
+        new Platform(3500, GAME_HEIGHT - groundHeight - 150, 150, 20),
+        new Platform(4000, GAME_HEIGHT - groundHeight - 180, 170, 20)
     ];
 }
 
 // Create Enemies
 function createEnemies() {
     return [
-        new Enemy(500, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(800, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(1100, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(1300, GAME_HEIGHT - images.ground.height - 100), // Enemy on ground
-        new Enemy(1600, GAME_HEIGHT - images.ground.height - 100), // Another enemy on ground
-        new Enemy(2000, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(2500, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(3000, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(3500, GAME_HEIGHT - images.ground.height - 100),
-        new Enemy(4000, GAME_HEIGHT - images.ground.height - 100)
+        new Enemy(500, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(800, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(1100, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(1300, GAME_HEIGHT - groundHeight - 100), // Enemy on ground
+        new Enemy(1600, GAME_HEIGHT - groundHeight - 100), // Another enemy on ground
+        new Enemy(2000, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(2500, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(3000, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(3500, GAME_HEIGHT - groundHeight - 100),
+        new Enemy(4000, GAME_HEIGHT - groundHeight - 100)
     ];
 }
 
@@ -568,10 +581,10 @@ function createCoins() {
                 let platform = platforms[i % platforms.length];
                 coinY = platform.y - 40; // Place the coin slightly above the platform
             } else {
-                coinY = GAME_HEIGHT - images.ground.height - 200;
+                coinY = GAME_HEIGHT - groundHeight - 200;
             }
         } else {
-            coinY = GAME_HEIGHT - images.ground.height - 200; // On ground
+            coinY = GAME_HEIGHT - groundHeight - 200; // On ground
         }
 
         coinList.push(new Coin(coinX, coinY));
@@ -668,8 +681,8 @@ function checkCollisions() {
     });
 
     // Check collision with ground
-    if (player.y + player.height >= GAME_HEIGHT - images.ground.height) { // Ground height from image
-        player.y = GAME_HEIGHT - images.ground.height - player.height;
+    if (player.y + player.height >= GAME_HEIGHT - groundHeight) { // Ground height from image
+        player.y = GAME_HEIGHT - groundHeight - player.height;
         player.vy = 0;
         player.onGround = true;
         if (!player.isPunching) {
@@ -688,8 +701,8 @@ function checkCollisions() {
     }
 
     // Prevent player from going below the ground
-    if (player.y + player.height > GAME_HEIGHT - images.ground.height) {
-        player.y = GAME_HEIGHT - images.ground.height - player.height;
+    if (player.y + player.height > GAME_HEIGHT - groundHeight) {
+        player.y = GAME_HEIGHT - groundHeight - player.height;
         player.vy = 0;
         player.onGround = true;
     }
@@ -721,6 +734,9 @@ function update(deltaTime, currentTime) {
     checkCollisions();
 
     updateParticles(deltaTime);
+
+    // Update camera position based on player position
+    updateCamera();
 }
 
 // Resolve Collisions Between Enemies to Prevent Overlapping
@@ -755,6 +771,25 @@ function resolveEnemyCollisions() {
     }
 }
 
+// Update Camera Position
+function updateCamera() {
+    // Define deadzone boundaries
+    const deadzoneLeft = DEADZONE_WIDTH;
+    const deadzoneRight = GAME_WIDTH - DEADZONE_WIDTH;
+
+    if (player.x - cameraX > deadzoneRight) {
+        cameraX = player.x - deadzoneRight;
+    } else if (player.x - cameraX < deadzoneLeft) {
+        cameraX = player.x - deadzoneLeft;
+    }
+
+    // Clamp cameraX within world bounds
+    if (cameraX < 0) cameraX = 0;
+    if (cameraX + GAME_WIDTH > WORLD_WIDTH) {
+        cameraX = WORLD_WIDTH - GAME_WIDTH;
+    }
+}
+
 // Update HUD
 function updateHUD() {
     const coinCounter = document.getElementById('coinCounter');
@@ -785,16 +820,16 @@ function render() {
     const bgCount = Math.ceil(GAME_WIDTH / bgWidth) + 1;
 
     for (let i = 0; i < bgCount; i++) {
-        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - images.ground.height);
+        ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - groundHeight);
     }
 
     // Draw ground
     const groundWidth = images.ground.width;
-    const groundHeight = images.ground.height;
+    const groundHeightLocal = images.ground.height;
     const groundCount = Math.ceil(GAME_WIDTH / groundWidth) + 1;
 
     for (let i = 0; i < groundCount; i++) {
-        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - groundHeight, groundWidth, groundHeight);
+        ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - groundHeightLocal, groundWidth, groundHeightLocal);
     }
 
     // Draw platforms
@@ -814,6 +849,20 @@ function render() {
 
     // Update HUD
     updateHUD();
+
+    // Optional: Draw collision boxes for debugging
+    // Draw player collision box
+    // ctx.strokeStyle = 'red';
+    // ctx.strokeRect(player.x - cameraX, player.y, player.width, player.height);
+    // Draw enemies collision boxes
+    /*
+    enemies.forEach(enemy => {
+        if (enemy.alive) {
+            ctx.strokeStyle = 'blue';
+            ctx.strokeRect(enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
+        }
+    });
+    */
 }
 
 // Display End Message
@@ -904,6 +953,9 @@ function restartGame() {
     win = false;
     cameraX = 0;
 
+    // Position player on the ground
+    player.y = GAME_HEIGHT - groundHeight - player.height;
+
     // Hide end message
     const endMessage = document.getElementById('endMessage');
     if (endMessage) {
@@ -946,7 +998,7 @@ function resolveEnemyCollisions() {
                         enemyB.x -= overlapX / 2;
                     }
 
-                    // Optionally, reverse their directions to add dynamic behavior
+                    // Reverse their directions to add dynamic behavior
                     enemyA.vx *= -1;
                     enemyB.vx *= -1;
                 }
