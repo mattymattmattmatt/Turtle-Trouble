@@ -653,6 +653,39 @@ function isColliding(rect1, rect2) {
            rect1.y + rect1.height > rect2.y;
 }
 
+// Handle collisions between enemies to prevent overlapping
+function handleEnemyCollisions() {
+    for (let i = 0; i < enemies.length; i++) {
+        for (let j = i + 1; j < enemies.length; j++) {
+            const enemyA = enemies[i];
+            const enemyB = enemies[j];
+
+            // Only consider alive enemies for collision
+            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
+                // Calculate the overlap in the x-axis
+                const overlapX = (enemyA.x + enemyA.width) - enemyB.x;
+
+                // Adjust positions to prevent overlapping
+                if (enemyA.x < enemyB.x) {
+                    enemyA.x -= overlapX / 2;
+                    enemyB.x += overlapX / 2;
+                } else {
+                    enemyA.x += overlapX / 2;
+                    enemyB.x -= overlapX / 2;
+                }
+
+                // Reverse their horizontal velocities to simulate a bounce effect
+                enemyA.vx = -enemyA.vx;
+                enemyB.vx = -enemyB.vx;
+
+                // Update their facing directions based on new velocities
+                enemyA.facing = enemyA.vx < 0 ? 'left' : 'right';
+                enemyB.facing = enemyB.vx < 0 ? 'left' : 'right';
+            }
+        }
+    }
+}
+
 // Update Game Objects
 function update(deltaTime, currentTime) {
     player.update(deltaTime, currentTime);
@@ -660,6 +693,9 @@ function update(deltaTime, currentTime) {
     enemies.forEach(enemy => {
         enemy.updateChase(player.x, player.y, deltaTime);
     });
+
+    // Handle collisions between enemies after updating their positions
+    handleEnemyCollisions();
 
     coins.forEach(coin => coin.update());
 
