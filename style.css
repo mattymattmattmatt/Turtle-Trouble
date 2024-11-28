@@ -19,7 +19,7 @@ body {
 }
 
 #gameContainer {
-    position: relative;
+    position: relative; /* Make #gameContainer the positioning context */
     margin-bottom: 20px;
 }
 
@@ -234,7 +234,7 @@ body {
     background-color: #e6b800;
 }
 
-/* Boss Health Meter Adjustments */
+/* Additional Styles for Boss Health Meter */
 #bossHealthMeter.show {
     display: block;
 }
