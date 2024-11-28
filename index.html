@@ -17,15 +17,25 @@
         </div>
         
         <div id="hud">
-            <div id="coinCounter"><img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20</div>
+            <div id="coinCounter">
+                <img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20
+            </div>
             <div id="staminaMeter">
                 <div id="staminaFill"></div>
             </div>
+            <div id="livesCounter">
+                <img src="assets/images/life-icon.png" alt="Lives" /> Lives: 3
+            </div>
+            <div id="bossHealthMeter">
+                <div id="bossHealthFill"></div>
+            </div>
         </div>
+        
         <div id="endMessage" class="hidden">
             <!-- End game messages will appear here -->
         </div>
     </div>
+    
     <!-- Controls Section -->
     <div id="controlsContainer">
         <h2>Controls</h2>
@@ -46,11 +56,13 @@
             <span class="action">Sprint</span>
         </div>
     </div>
-    <!-- New Toggle Buttons -->
+    
+    <!-- Audio Controls -->
     <div id="audioControls">
         <button id="toggleMusic">Music: On</button>
         <button id="toggleSound">Sound Effects: On</button>
     </div>
+    
     <script src="game.js"></script>
 </body>
 </html>

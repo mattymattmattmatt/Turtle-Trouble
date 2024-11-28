@@ -13,6 +13,11 @@ body {
     margin: 0;
 }
 
+/* Optional: Adding a Pixelated Cursor */
+body {
+    cursor: url('assets/images/pixel-cursor.png'), auto;
+}
+
 #gameContainer {
     position: relative;
     margin-bottom: 20px;
@@ -59,6 +64,7 @@ body {
     gap: 20px;
 }
 
+/* Coin Counter Styles */
 #coinCounter {
     display: flex;
     align-items: center;
@@ -66,6 +72,7 @@ body {
     font-size: 16px;
 }
 
+/* Stamina Meter Styles */
 #staminaMeter {
     width: 150px;
     height: 20px;
@@ -79,6 +86,41 @@ body {
     height: 100%;
     width: 100%;
     background-color: #00ff00; /* Green by default */
+}
+
+/* Lives Counter Styles */
+#livesCounter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 16px;
+}
+
+/* Boss Health Meter Styles */
+#bossHealthMeter {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 25px;
+    background-color: #555555;
+    border: 2px solid #ffffff;
+    border-radius: 5px;
+    overflow: hidden;
+    display: none; /* Hidden by default */
+}
+
+#bossHealthFill {
+    height: 100%;
+    width: 100%;
+    background-color: #ff0000; /* Red by default */
+    transition: width 0.3s, background-color 0.3s;
+}
+
+/* Show the boss health meter when active */
+#bossHealthMeter.show {
+    display: block;
 }
 
 /* End Message Styles */
@@ -145,7 +187,7 @@ body {
     font-size: 10px;
 }
 
-/* New Audio Controls Styles */
+/* Audio Controls Styles */
 #audioControls {
     margin-top: 20px;
     display: flex;
@@ -192,7 +234,14 @@ body {
     background-color: #e6b800;
 }
 
-/* Optional: Adding a Pixelated Cursor */
-body {
-    cursor: url('assets/images/pixel-cursor.png'), auto;
+/* Boss Health Meter Adjustments */
+#bossHealthMeter.show {
+    display: block;
+}
+
+#bossHealthFill {
+    height: 100%;
+    width: 100%;
+    background-color: #ff0000; /* Red by default */
+    transition: width 0.3s, background-color 0.3s;
 }

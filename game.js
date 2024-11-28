@@ -32,7 +32,8 @@ const imageSources = {
     background: 'assets/images/background.png',
     ground: 'assets/images/ground.png',
     platform: 'assets/images/platform.png',
-    coinIcon: 'assets/images/coin-icon.png'
+    coinIcon: 'assets/images/coin-icon.png',
+    lifeIcon: 'assets/images/life-icon.png' // Life icon for HUD
 };
 
 // Load all images using Promises
@@ -198,6 +199,7 @@ class Player {
         this.frameCount = 0;
         this.coinsCollected = 0;
         this.facing = 'right'; // 'right' or 'left'
+        this.lives = 3; // Player lives
 
         // Punch Mechanic
         this.isPunching = false;
@@ -451,6 +453,92 @@ class Enemy {
     }
 }
 
+// Boss Class
+class Boss {
+    constructor(x, y) {
+        this.x = x; // World X
+        this.y = y; // World Y (on ground)
+        this.originalWidth = 50;
+        this.originalHeight = 50;
+        this.width = this.originalWidth * 3; // Scaled to 300%
+        this.height = this.originalHeight * 3; // Scaled to 300%
+        this.vx = -2; // Boss initial speed towards the left
+        this.alive = true;
+        this.speed = 2; // Boss movement speed
+        this.state = 'entering'; // entering, attacking, idle
+        this.animationFrame = 0;
+        this.frameCount = 0;
+        this.facing = 'left'; // 'left' or 'right'
+
+        // Health
+        this.maxHealth = 10;
+        this.health = this.maxHealth;
+    }
+
+    update(deltaTime, playerX, playerY) {
+        if (!this.alive) return;
+
+        // Boss enters the screen
+        if (this.state === 'entering') {
+            if (this.x <= GAME_WIDTH - this.width - 50) { // Boss stops 50px before the end
+                this.vx = this.speed; // Start moving left
+                this.state = 'idle';
+            }
+        }
+
+        // Simple patrolling behavior
+        if (this.state === 'idle') {
+            // Reverse direction upon reaching certain points
+            if (this.x <= 100) {
+                this.vx = this.speed;
+                this.facing = 'right';
+            } else if (this.x >= WORLD_WIDTH - this.width - 50) {
+                this.vx = -this.speed;
+                this.facing = 'left';
+            }
+        }
+
+        // Move boss
+        this.x += this.vx;
+
+        // Prevent boss from moving out of world bounds
+        if (this.x < 0) {
+            this.x = 0;
+            this.vx = this.speed;
+            this.facing = 'right';
+        }
+        if (this.x + this.width > WORLD_WIDTH) {
+            this.x = WORLD_WIDTH - this.width;
+            this.vx = -this.speed;
+            this.facing = 'left';
+        }
+
+        // Update animation
+        this.frameCount += 1;
+        if (this.frameCount >= 20) { // Adjust for animation speed
+            this.frameCount = 0;
+            this.animationFrame = (this.animationFrame + 1) % 2;
+        }
+    }
+
+    draw(cameraX) {
+        if (!this.alive) return;
+
+        // Use the same enemy sprite but scaled up
+        let img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
+
+        ctx.save();
+        if (this.facing === 'left') {
+            ctx.translate(this.x - cameraX + this.width, this.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, this.width, this.height);
+        } else {
+            ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
+        }
+        ctx.restore();
+    }
+}
+
 // Coin Class
 class Coin {
     constructor(x, y) {
@@ -483,6 +571,8 @@ let player;
 let enemies = [];
 let coins = [];
 let platforms = [];
+let boss = null; // Boss object
+let bossActive = false; // Flag to check if boss is active
 let gameOver = false;
 let win = false;
 let particles = [];
@@ -540,6 +630,19 @@ function init() {
 
         coins.push(new Coin(coinX, coinY));
     }
+
+    // Dynamically create Lives Counter in HUD
+    const hud = document.getElementById('hud');
+    const livesCounter = document.createElement('div');
+    livesCounter.id = 'livesCounter';
+    livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
+    hud.appendChild(livesCounter);
+
+    // Dynamically create Boss Health Meter in HUD
+    const bossHealthMeter = document.createElement('div');
+    bossHealthMeter.id = 'bossHealthMeter';
+    bossHealthMeter.innerHTML = `<div id="bossHealthFill"></div>`;
+    hud.appendChild(bossHealthMeter);
 }
 
 // Create a particle
@@ -590,13 +693,68 @@ function checkCollisions() {
                 createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000'); // Red particles
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else {
-                // Player takes damage or game over
-                gameOver = true;
-                createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
-                if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
+                // Player takes damage or loses a life
+                if (player.lives > 0) {
+                    player.lives -= 1;
+                    updateHUD();
+                    createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
+                    if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
+
+                    // Reset player position
+                    resetPlayerPosition();
+                }
+
+                if (player.lives <= 0) {
+                    gameOver = true;
+                }
             }
         }
     });
+
+    // Check collision with boss
+    if (bossActive && boss.alive && isColliding(player, boss)) {
+        if (player.vy > 0 && player.y + player.height - player.vy <= boss.y) {
+            // Player is falling and hits the top of the boss
+            boss.health -= 1; // Considered as a punch
+            createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000'); // Red particles
+            if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+
+            if (boss.health <= 0) {
+                boss.alive = false;
+                win = true;
+                createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00'); // Green particles
+            }
+
+            // Bounce effect
+            player.vy = -10;
+        } else if (player.isPunching) {
+            // Player is punching the boss
+            boss.health -= 1;
+            createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000'); // Red particles
+            if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+
+            if (boss.health <= 0) {
+                boss.alive = false;
+                win = true;
+                createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00'); // Green particles
+            }
+        } else {
+            // Player takes damage or loses a life
+            if (player.lives > 0) {
+                player.lives -= 1;
+                updateHUD();
+                createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
+                if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
+
+                // Reset player position
+                resetPlayerPosition();
+            }
+
+            if (player.lives <= 0) {
+                gameOver = true;
+            }
+        }
+    }
 
     // Check collision with coins
     coins.forEach(coin => {
@@ -605,8 +763,11 @@ function checkCollisions() {
             player.coinsCollected++;
             createParticle(coin.x + coin.width / 2, coin.y + coin.height / 2);
             if (isSoundEffectsOn && sounds.collectCoin) sounds.collectCoin.play();
-            if (player.coinsCollected === 20) {
-                win = true;
+            updateHUD();
+
+            // Check if all coins are collected to spawn the boss
+            if (player.coinsCollected === 20 && !bossActive) {
+                spawnBoss();
             }
         }
     });
@@ -686,6 +847,25 @@ function handleEnemyCollisions() {
     }
 }
 
+// Spawn the boss after all coins are collected
+function spawnBoss() {
+    // Initialize boss at the far right of the world
+    boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.enemy.height * 3); // Positioned on the ground
+    bossActive = true;
+    document.getElementById('bossHealthMeter').classList.add('show');
+    updateHUD();
+}
+
+// Reset player position after losing a life
+function resetPlayerPosition() {
+    player.x = 100;
+    player.y = GAME_HEIGHT - 150;
+    player.vx = 0;
+    player.vy = 0;
+    player.onGround = false;
+    player.state = 'idle';
+}
+
 // Update Game Objects
 function update(deltaTime, currentTime) {
     player.update(deltaTime, currentTime);
@@ -699,7 +879,10 @@ function update(deltaTime, currentTime) {
 
     coins.forEach(coin => coin.update());
 
-    // Platforms are static; no update needed
+    // Update boss if active
+    if (bossActive && boss.alive) {
+        boss.update(deltaTime, player.x, player.y);
+    }
 
     checkCollisions();
 
@@ -739,6 +922,26 @@ function updateHUD() {
     } else {
         staminaFill.style.backgroundColor = '#ff0000'; // Red
     }
+
+    // Update Lives Counter
+    const livesCounter = document.getElementById('livesCounter');
+    livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
+
+    // Update Boss Health Meter if active
+    if (bossActive && boss.alive) {
+        const bossHealthFill = document.getElementById('bossHealthFill');
+        const bossHealthPercentage = (boss.health / boss.maxHealth) * 100;
+        bossHealthFill.style.width = `${bossHealthPercentage}%`;
+
+        // Change color based on boss health level
+        if (bossHealthPercentage > 60) {
+            bossHealthFill.style.backgroundColor = '#ff0000'; // Red
+        } else if (bossHealthPercentage > 30) {
+            bossHealthFill.style.backgroundColor = '#ffff00'; // Yellow
+        } else {
+            bossHealthFill.style.backgroundColor = '#00ff00'; // Green
+        }
+    }
 }
 
 // Render Game
@@ -773,6 +976,11 @@ function render() {
     // Draw enemies
     enemies.forEach(enemy => enemy.draw(cameraX));
 
+    // Draw boss if active
+    if (bossActive && boss.alive) {
+        boss.draw(cameraX);
+    }
+
     // Draw player
     player.draw(cameraX);
 
@@ -789,7 +997,7 @@ function displayEndMessage() {
 
     if (win) {
         endMessage.innerHTML = `
-            <p>You Collected All Coins! You Win!</p>
+            <p>You Defeated the Boss! You Win!</p>
             <button onclick="restartGame()">Restart</button>
         `;
     } else {
@@ -866,6 +1074,8 @@ function restartGame() {
     enemies = [];
     coins = [];
     platforms = [];
+    boss = null;
+    bossActive = false;
     particles = [];
     gameOver = false;
     win = false;
@@ -915,6 +1125,16 @@ function restartGame() {
 
         coins.push(new Coin(coinX, coinY));
     }
+
+    // Reset HUD
+    const livesCounter = document.getElementById('livesCounter');
+    livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
+
+    const bossHealthMeter = document.getElementById('bossHealthMeter');
+    bossHealthMeter.classList.remove('show');
+    const bossHealthFill = document.getElementById('bossHealthFill');
+    bossHealthFill.style.width = '100%';
+    bossHealthFill.style.backgroundColor = '#ff0000'; // Reset to red
 
     // Hide end message
     const endMessage = document.getElementById('endMessage');
