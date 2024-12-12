@@ -39,13 +39,13 @@ const imageSources = {
 // Load all images using Promises
 const loadImages = () => {
     const promises = Object.keys(imageSources).map(key => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             images[key] = new Image();
             images[key].src = imageSources[key];
             images[key].onload = () => resolve();
             images[key].onerror = () => {
                 console.error(`Failed to load image: ${imageSources[key]}`);
-                resolve(); // Resolve even if an image fails to load to prevent blocking
+                resolve(); // Resolve even if an image fails to load
             };
         });
     });
@@ -59,7 +59,7 @@ const soundSources = {
     punch: 'assets/audio/punch.wav',
     collectCoin: 'assets/audio/collect-coin.wav',
     gameOver: 'assets/audio/game-over.wav',
-    background: 'assets/audio/Turtle-Trouble-Theme.mp3' // New Background Music
+    background: 'assets/audio/Turtle-Trouble-Theme.mp3' // Background Music
 };
 
 // Flags to track audio settings
@@ -78,6 +78,14 @@ const loadSounds = () => {
         }
     });
 };
+
+// Pause functionality
+let paused = false;
+
+document.getElementById('pauseButton').addEventListener('click', () => {
+    paused = !paused;
+    document.getElementById('pauseButton').textContent = paused ? 'Resume' : 'Pause';
+});
 
 // Handle user input
 const keys = {
@@ -206,15 +214,15 @@ class Player {
         // Punch Mechanic
         this.isPunching = false;
         this.punchCooldown = false;
-        this.punchDuration = 500; // in milliseconds
+        this.punchDuration = 500; // ms
         this.punchStartTime = 0;
 
         // Sprint Mechanic
         this.isSprinting = false;
         this.stamina = 100; // Max stamina
         this.maxStamina = 100;
-        this.staminaDepletionRate = 100 / 1.5; // 100 stamina in 1.5 seconds
-        this.staminaRechargeRate = 100 / 1.5; // Recharges 100 stamina in 1.5 seconds
+        this.staminaDepletionRate = 100 / 1.5; 
+        this.staminaRechargeRate = 100 / 1.5;
 
         // Invincibility after respawn
         this.isInvincible = false;
@@ -279,8 +287,7 @@ class Player {
         if (this.isPunching) {
             if (currentTime - this.punchStartTime >= this.punchDuration) {
                 this.isPunching = false;
-                this.punchCooldown = false; // Reset cooldown after punch duration
-                // Reset state based on movement
+                this.punchCooldown = false; 
                 if (this.vx === 0) {
                     this.state = 'idle';
                 } else {
@@ -301,10 +308,8 @@ class Player {
         this.y += this.vy;
         this.x += this.vx;
 
-        // Prevent moving out of world bounds (left side)
+        // Prevent moving out of world bounds
         if (this.x < 0) this.x = 0;
-
-        // Prevent moving out of world bounds (right side)
         if (this.x + this.width > WORLD_WIDTH) {
             this.x = WORLD_WIDTH - this.width;
             this.vx = 0;
@@ -312,9 +317,9 @@ class Player {
 
         // Flash effect during invincibility
         if (this.isInvincible) {
-            const flashInterval = 200; // milliseconds
+            const flashInterval = 200; // ms
             if (Math.floor(currentTime / flashInterval) % 2 === 0) {
-                this.visibility = 0.5; // Semi-transparent
+                this.visibility = 0.5; 
             } else {
                 this.visibility = 1;
             }
@@ -343,7 +348,7 @@ class Player {
         }
 
         ctx.save();
-        ctx.globalAlpha = this.visibility; // Apply visibility for invincibility flashing
+        ctx.globalAlpha = this.visibility;
         if (this.facing === 'left') {
             ctx.translate(this.x - cameraX + this.width, this.y);
             ctx.scale(-1, 1);
@@ -353,21 +358,19 @@ class Player {
         }
         ctx.restore();
 
-        // Handle walking animation frame updates only when walking
+        // Handle walking animation
         if (this.state === 'walking') {
             this.frameCount += 1;
-            if (this.frameCount >= 10) { // Adjust for animation speed
+            if (this.frameCount >= 10) {
                 this.frameCount = 0;
                 this.animationFrame = (this.animationFrame + 1) % 2;
             }
         } else {
-            // Reset to first animation frame when not walking
             this.animationFrame = 0;
             this.frameCount = 0;
         }
     }
 
-    // Reset player to starting position and make invincible briefly
     resetToStart() {
         this.x = this.startX;
         this.y = this.startY;
@@ -383,27 +386,25 @@ class Player {
 // Enemy Class
 class Enemy {
     constructor(x, y) {
-        this.x = x; // World X
-        this.y = y; // World Y (on ground)
+        this.x = x; 
+        this.y = y; 
         this.width = 50;
         this.height = 50;
-        this.vx = 0; // Current horizontal velocity
-        this.vy = 0; // Vertical velocity
+        this.vx = 0; 
+        this.vy = 0; 
         this.alive = true;
-        this.speed = 1.5; // Enemy movement speed
-        this.state = 'idle'; // idle or chasing
+        this.speed = 1.5; 
+        this.state = 'idle'; 
         this.animationFrame = 0;
         this.frameCount = 0;
-        this.facing = 'right'; // 'right' or 'left'
+        this.facing = 'right'; 
 
-        // Chasing parameters
-        this.chaseDistance = 200; // Start chasing if player is within 200px
-        this.stopChaseDistance = 250; // Stop chasing if player is beyond 250px
+        this.chaseDistance = 250; 
+        this.stopChaseDistance = 300;
     }
 
     initiateChase(playerX) {
         this.state = 'chasing';
-        // Determine direction
         if (playerX < this.x) {
             this.vx = -this.speed;
             this.facing = 'left';
@@ -420,8 +421,6 @@ class Enemy {
 
     updateChase(playerX, playerY, deltaTime) {
         if (!this.alive) return;
-
-        // Calculate distance to player
         const distance = Math.abs(playerX - this.x);
 
         if (this.state === 'idle') {
@@ -443,18 +442,18 @@ class Enemy {
             }
         }
 
-        // Apply gravity
+        // Gravity
         this.vy += GRAVITY;
         this.y += this.vy;
         this.x += this.vx;
 
-        // Collision with ground
+        // Ground collision
         if (this.y + this.height >= GAME_HEIGHT - images.ground.height) {
             this.y = GAME_HEIGHT - images.ground.height - this.height;
             this.vy = 0;
         }
 
-        // Prevent enemy from moving out of world bounds
+        // World bounds
         if (this.x < 0) {
             this.x = 0;
             this.vx = this.speed;
@@ -466,9 +465,9 @@ class Enemy {
             this.facing = 'left';
         }
 
-        // Update animation
+        // Animation
         this.frameCount += 1;
-        if (this.frameCount >= 15) { // Adjust for animation speed
+        if (this.frameCount >= 15) {
             this.frameCount = 0;
             this.animationFrame = (this.animationFrame + 1) % 2;
         }
@@ -477,12 +476,11 @@ class Enemy {
     draw(cameraX) {
         if (!this.alive) return;
 
-        // Determine which walk image to use based on animation frame
         let img;
         if (this.state === 'chasing') {
             img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
         } else {
-            img = images.enemy; // Idle image
+            img = images.enemy;
         }
 
         ctx.save();
@@ -494,46 +492,37 @@ class Enemy {
             ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
         }
         ctx.restore();
-
-        // Handle walking animation frame updates only when chasing
-        if (this.state === 'chasing') {
-            // Animation handled in updateChase
-        } else {
-            // Reset to first animation frame when not chasing
-            this.animationFrame = 0;
-            this.frameCount = 0;
-        }
     }
 }
 
-// Boss Class
+// Boss Class - with a custom hitbox
 class Boss {
     constructor(x, y) {
-        this.x = x; // World X
-        this.y = y; // World Y (on ground, adjusted)
-        this.width = 150; // 50 * 3
-        this.height = 150; // 50 * 3
-        this.vx = -2; // Boss initial speed towards the left
-        this.vy = 0; // Vertical velocity
+        this.x = x; 
+        this.y = y; 
+        this.width = 150; 
+        this.height = 150; 
+        this.vx = -2; 
+        this.vy = 0; 
         this.alive = true;
-        this.speed = 2; // Boss movement speed
-        this.state = 'entering'; // entering, chasing, runningAway
+        this.speed = 2; 
+        this.state = 'entering'; 
         this.animationFrame = 0;
         this.frameCount = 0;
-        this.facing = 'left'; // 'left' or 'right'
+        this.facing = 'left'; 
 
-        // Health
         this.maxHealth = 10;
         this.health = this.maxHealth;
-
-        // Running away
-        this.runAwayDuration = 2000; // 2 seconds
+        this.runAwayDuration = 2000; 
         this.runAwayStartTime = null;
+
+        // Custom hitbox approximating the turtle body (a bit smaller)
+        // For example, making the hitbox narrower and slightly less tall
+        this.hitBox = {xOffset: 30, yOffset: 40, width: 90, height: 90};
     }
 
     initiateChase(playerX) {
         this.state = 'chasing';
-        // Determine direction
         if (playerX < this.x) {
             this.vx = -this.speed;
             this.facing = 'left';
@@ -545,24 +534,22 @@ class Boss {
 
     runAway() {
         this.state = 'runningAway';
-        // Reverse direction to run away
         this.vx = this.facing === 'left' ? this.speed : -this.speed;
         this.runAwayStartTime = performance.now();
     }
 
-    update(deltaTime, playerX, playerY) {
+    update(deltaTime, playerX) {
         if (!this.alive) return;
 
-        // Boss enters the screen
+        // Entering screen
         if (this.state === 'entering') {
-            if (this.x <= GAME_WIDTH - this.width - 50) { // Boss stops 50px before the end
+            if (this.x <= GAME_WIDTH - this.width - 50) {
                 this.initiateChase(playerX);
             }
         }
 
         // Chasing behavior
         if (this.state === 'chasing') {
-            // Determine direction towards the player
             if (playerX < this.x) {
                 this.vx = -this.speed;
                 this.facing = 'left';
@@ -572,26 +559,25 @@ class Boss {
             }
         }
 
-        // Running away behavior
+        // Running away
         if (this.state === 'runningAway') {
-            // Check if run away duration has passed
             if (performance.now() - this.runAwayStartTime >= this.runAwayDuration) {
                 this.initiateChase(playerX);
             }
         }
 
-        // Apply gravity
+        // Gravity
         this.vy += GRAVITY;
         this.y += this.vy;
         this.x += this.vx;
 
-        // Collision with ground
+        // Ground collision
         if (this.y + this.height >= GAME_HEIGHT - images.ground.height) {
             this.y = GAME_HEIGHT - images.ground.height - this.height;
             this.vy = 0;
         }
 
-        // Prevent boss from moving out of world bounds
+        // World bounds
         if (this.x < 0) {
             this.x = 0;
             this.vx = this.speed;
@@ -603,9 +589,9 @@ class Boss {
             this.facing = 'left';
         }
 
-        // Update animation
+        // Animation
         this.frameCount += 1;
-        if (this.frameCount >= 20) { // Adjust for animation speed
+        if (this.frameCount >= 20) {
             this.frameCount = 0;
             this.animationFrame = (this.animationFrame + 1) % 2;
         }
@@ -614,12 +600,11 @@ class Boss {
     draw(cameraX) {
         if (!this.alive) return;
 
-        // Use the enemy walking images scaled up for the boss
         let img;
         if (this.state === 'chasing' || this.state === 'runningAway') {
             img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
         } else {
-            img = images.enemy; // Idle image
+            img = images.enemy;
         }
 
         ctx.save();
@@ -631,34 +616,33 @@ class Boss {
             ctx.drawImage(img, this.x - cameraX, this.y, this.width, this.height);
         }
         ctx.restore();
+    }
 
-        // Handle walking animation frame updates only when chasing or runningAway
-        if (this.state === 'chasing' || this.state === 'runningAway') {
-            // Animation handled in update
-        } else {
-            // Reset to first animation frame when not chasing
-            this.animationFrame = 0;
-            this.frameCount = 0;
-        }
+    getHitBox() {
+        return {
+            x: this.x + this.hitBox.xOffset,
+            y: this.y + this.hitBox.yOffset,
+            width: this.hitBox.width,
+            height: this.hitBox.height
+        };
     }
 }
 
-// Coin Class
+// Coin Class - will vary heights
 class Coin {
     constructor(x, y) {
-        this.x = x; // World X
-        this.baseY = y; // Base Y position for bobbing
-        this.y = y; // Current Y position
+        this.x = x; 
+        this.baseY = y; 
+        this.y = y; 
         this.width = 30;
         this.height = 30;
         this.collected = false;
-        this.bobHeight = 10; // How much the coin bobs up and down
-        this.bobSpeed = 0.05; // Speed of bobbing
-        this.bobAngle = 0; // Current angle for sine wave
+        this.bobHeight = 10; 
+        this.bobSpeed = 0.05; 
+        this.bobAngle = 0; 
     }
 
     update() {
-        // Animate bobbing
         this.bobAngle += this.bobSpeed;
         this.y = this.baseY + Math.sin(this.bobAngle) * this.bobHeight;
     }
@@ -670,31 +654,30 @@ class Coin {
     }
 }
 
-// Initialize game objects
 let player;
 let enemies = [];
 let coins = [];
 let platforms = [];
-let boss = null; // Boss object
-let bossActive = false; // Flag to check if boss is active
+let boss = null;
+let bossActive = false;
 let gameOver = false;
 let win = false;
 let particles = [];
-let cameraX = 0; // Camera offset
+let cameraX = 0; 
 
 // Deadzone settings
-const DEADZONE_WIDTH = 200; // Width of the deadzone from the left
-const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH; // Right boundary of deadzone
+const DEADZONE_WIDTH = 200; 
+const DEADZONE_RIGHT_BOUND = GAME_WIDTH - DEADZONE_WIDTH;
 
-// Initialize the game
+// Initialize the game with more interesting coin placements
 function init() {
     player = new Player();
 
-    // Create platforms first (needed for coin placement on platforms)
+    // Create platforms 
     platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
     platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
-    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20)); // Platform without enemy
+    platforms.push(new Platform(1300, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(1600, GAME_HEIGHT - 180, 170, 20));
     platforms.push(new Platform(2000, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(2500, GAME_HEIGHT - 220, 200, 20));
@@ -702,46 +685,47 @@ function init() {
     platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
 
-    // Create enemies at specific positions (static on ground)
+    // Enemies
     enemies.push(new Enemy(500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(800, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(1100, GAME_HEIGHT - images.ground.height - 50));
-    enemies.push(new Enemy(1300, GAME_HEIGHT - images.ground.height - 50)); // Enemy on ground
-    enemies.push(new Enemy(1600, GAME_HEIGHT - images.ground.height - 50)); // Another enemy on ground
+    enemies.push(new Enemy(1300, GAME_HEIGHT - images.ground.height - 50));
+    enemies.push(new Enemy(1600, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(2000, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(2500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(3000, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(3500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(4000, GAME_HEIGHT - images.ground.height - 50));
 
-    // **Restore Original Coin Positions**
-    // Replace these positions with your original coin placements.
-    // Assuming original positions were manually set, here are 20 example positions.
-    coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(4050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(4250, GAME_HEIGHT - images.ground.height - 50)); // Ground
+    // Fun coin placements (20 coins total)
+    // Some on ground, some slightly above ground, some on platforms
+    coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 100)); 
+    coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 80));
+    coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 60));
+    // On first platform
+    coins.push(new Coin(420, GAME_HEIGHT - 180)); 
+    coins.push(new Coin(750, GAME_HEIGHT - 250)); // Above a higher platform
+    coins.push(new Coin(1020, GAME_HEIGHT - 210)); // Slightly above platform
+    coins.push(new Coin(1320, GAME_HEIGHT - 180)); 
+    coins.push(new Coin(1650, GAME_HEIGHT - 200)); 
+    coins.push(new Coin(1850, GAME_HEIGHT - 100)); 
+    coins.push(new Coin(2050, GAME_HEIGHT - 180));
 
-    // Dynamically create Lives Counter in HUD
+    // Scattered further out
+    coins.push(new Coin(2250, GAME_HEIGHT - 100));
+    coins.push(new Coin(2450, GAME_HEIGHT - 240)); 
+    coins.push(new Coin(2650, GAME_HEIGHT - 120));
+    coins.push(new Coin(2850, GAME_HEIGHT - 200));
+    coins.push(new Coin(3050, GAME_HEIGHT - 220));
+    coins.push(new Coin(3250, GAME_HEIGHT - 160));
+    coins.push(new Coin(3450, GAME_HEIGHT - 120));
+    coins.push(new Coin(3650, GAME_HEIGHT - 180));
+    coins.push(new Coin(3850, GAME_HEIGHT - 100));
+    coins.push(new Coin(4050, GAME_HEIGHT - 140));
+    coins.push(new Coin(4250, GAME_HEIGHT - 100));
+
+    // Dynamically create Lives Counter if needed
     const hud = document.getElementById('hud');
-    // Ensure livesCounter is not duplicated
     const existingLivesCounter = document.getElementById('livesCounter');
     if (!existingLivesCounter) {
         const livesCounter = document.createElement('div');
@@ -750,7 +734,7 @@ function init() {
         hud.appendChild(livesCounter);
     }
 
-    // Dynamically create Boss Health Meter in HUD
+    // Dynamically create Boss Health Meter if needed
     const existingBossHealthMeter = document.getElementById('bossHealthMeter');
     if (!existingBossHealthMeter) {
         const bossHealthMeter = document.createElement('div');
@@ -761,27 +745,29 @@ function init() {
 }
 
 // Create a particle
-function createParticle(x, y, color = '#FFD700') { // Default color gold
+function createParticle(x, y, color = '#FFD700') {
     particles.push(new Particle(x, y, color));
 }
 
 // Update particles
-function updateParticles(deltaTime) {
-    particles.forEach((particle, index) => {
-        particle.update();
-        if (particle.alpha <= 0) {
-            particles.splice(index, 1);
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        if (particles[i].alpha <= 0) {
+            particles.splice(i, 1);
         }
-    });
+    }
 }
 
-// Game Loop with deltaTime for accurate timing
+// Game Loop with deltaTime
 let lastTime = 0;
 function gameLoop(timeStamp) {
     const deltaTime = timeStamp - lastTime;
     lastTime = timeStamp;
 
-    update(deltaTime, timeStamp);
+    if (!paused) {
+        update(deltaTime, timeStamp);
+    }
     render();
 
     if (!gameOver && !win) {
@@ -795,29 +781,27 @@ function gameLoop(timeStamp) {
 function checkCollisions() {
     // Check collision with enemies
     enemies.forEach(enemy => {
-        if (enemy.alive && isColliding(player, enemy)) {
-            if (player.isInvincible) return; // Ignore collisions if invincible
+        if (enemy.alive && rectCollision(player, enemy)) {
+            if (player.isInvincible) return;
 
             if (player.vy > 0 && player.y + player.height - player.vy <= enemy.y) {
-                // Player is falling and hits the top of the enemy
+                // Stomp enemy
                 enemy.alive = false;
-                player.vy = -10; // Bounce effect
-                createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000'); // Red particles
+                player.vy = -10; 
+                createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000');
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else if (player.isPunching) {
-                // Player is punching
+                // Punch enemy
                 enemy.alive = false;
-                createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000'); // Red particles
+                createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000');
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else {
-                // Player takes damage or loses a life
+                // Player takes damage
                 if (player.lives > 0) {
                     player.lives -= 1;
                     updateHUD();
-                    createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
+                    createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000');
                     if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
-
-                    // **Reset player position and camera to starting location**
                     resetPlayerPosition();
                 }
 
@@ -828,74 +812,72 @@ function checkCollisions() {
         }
     });
 
-    // Check collision with boss
-    if (bossActive && boss.alive && isColliding(player, boss)) {
-        if (player.isInvincible) return; // Ignore collisions if invincible
+    // Check collision with boss (use custom hitbox)
+    if (bossActive && boss.alive) {
+        const bossBox = boss.getHitBox();
+        if (rectCollision(player, bossBox)) {
+            if (player.isInvincible) return;
 
-        if (player.vy > 0 && player.y + player.height - player.vy <= boss.y) {
-            // Player is falling and hits the top of the boss
-            if (boss.state !== 'runningAway') {
-                boss.health -= 1; // Considered as a punch
-                createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000'); // Red particles
-                if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+            if (player.vy > 0 && player.y + player.height - player.vy <= bossBox.y) {
+                // Stomp boss
+                if (boss.state !== 'runningAway') {
+                    boss.health -= 1; 
+                    createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000');
+                    if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
 
-                if (boss.health <= 0) {
-                    boss.alive = false;
-                    win = true;
-                    createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00'); // Green particles
-                } else {
-                    // Boss runs away
-                    boss.runAway();
+                    if (boss.health <= 0) {
+                        boss.alive = false;
+                        win = true;
+                        createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00');
+                    } else {
+                        boss.runAway();
+                    }
+
+                    player.vy = -10;
+                }
+            } else if (player.isPunching) {
+                // Punch boss
+                if (boss.state !== 'runningAway') {
+                    boss.health -= 1;
+                    createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000');
+                    if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
+
+                    if (boss.health <= 0) {
+                        boss.alive = false;
+                        win = true;
+                        createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00');
+                    } else {
+                        boss.runAway();
+                    }
+                }
+            } else {
+                // Player takes damage
+                if (player.lives > 0) {
+                    player.lives -= 1;
+                    updateHUD();
+                    createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000');
+                    if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
+                    resetPlayerPosition();
                 }
 
-                // Bounce effect
-                player.vy = -10;
-            }
-        } else if (player.isPunching) {
-            // Player is punching the boss
-            if (boss.state !== 'runningAway') {
-                boss.health -= 1;
-                createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000'); // Red particles
-                if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
-
-                if (boss.health <= 0) {
-                    boss.alive = false;
-                    win = true;
-                    createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00'); // Green particles
-                } else {
-                    // Boss runs away
-                    boss.runAway();
+                if (player.lives <= 0) {
+                    gameOver = true;
                 }
-            }
-        } else {
-            // Player takes damage or loses a life
-            if (player.lives > 0) {
-                player.lives -= 1;
-                updateHUD();
-                createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000'); // Black particles
-                if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
-
-                // **Reset player position and camera to starting location**
-                resetPlayerPosition();
-            }
-
-            if (player.lives <= 0) {
-                gameOver = true;
             }
         }
     }
 
     // Check collision with coins
     coins.forEach(coin => {
-        if (!coin.collected && isColliding(player, coin)) {
+        if (!coin.collected && rectCollision(player, coin)) {
             coin.collected = true;
             player.coinsCollected++;
             createParticle(coin.x + coin.width / 2, coin.y + coin.height / 2);
             if (isSoundEffectsOn && sounds.collectCoin) sounds.collectCoin.play();
             updateHUD();
 
-            // Check if all coins are collected to spawn the boss
-            if (player.coinsCollected === 20 && !bossActive) {
+            // Check if all coins are collected to spawn boss
+            if (player.coinsCollected >= 20 && !bossActive) {
                 spawnBoss();
             }
         }
@@ -903,59 +885,48 @@ function checkCollisions() {
 
     // Check collision with platforms
     platforms.forEach(platform => {
-        if (isColliding(player, platform)) {
+        if (rectCollision(player, platform)) {
             if (player.vy >= 0 && player.y + player.height - player.vy <= platform.y) {
-                // Player lands on top of the platform
+                // Land on platform
                 player.y = platform.y - player.height;
                 player.vy = 0;
                 player.onGround = true;
                 if (!player.isPunching) {
-                    if (player.vx === 0) {
-                        player.state = 'idle';
-                    } else {
-                        player.state = 'walking';
-                    }
+                    player.state = player.vx === 0 ? 'idle' : 'walking';
                 }
             }
         }
     });
 
-    // Check collision with ground
-    if (player.y + player.height >= GAME_HEIGHT - images.ground.height) { // Ground height from image
+    // Ground collision
+    if (player.y + player.height >= GAME_HEIGHT - images.ground.height) {
         player.y = GAME_HEIGHT - images.ground.height - player.height;
         player.vy = 0;
         player.onGround = true;
         if (!player.isPunching) {
-            if (player.vx === 0) {
-                player.state = 'idle';
-            } else {
-                player.state = 'walking';
-            }
+            player.state = player.vx === 0 ? 'idle' : 'walking';
         }
     }
 }
 
-// Collision Detection
-function isColliding(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
+// Basic rectangle collision
+function rectCollision(r1, r2) {
+    return (r1.x < r2.x + r2.width &&
+            r1.x + r1.width > r2.x &&
+            r1.y < r2.y + r2.height &&
+            r1.y + r1.height > r2.y);
 }
 
-// Handle collisions between enemies to prevent overlapping
+// Handle enemy collisions to prevent overlapping
 function handleEnemyCollisions() {
     for (let i = 0; i < enemies.length; i++) {
         for (let j = i + 1; j < enemies.length; j++) {
             const enemyA = enemies[i];
             const enemyB = enemies[j];
 
-            // Only consider alive enemies for collision
-            if (enemyA.alive && enemyB.alive && isColliding(enemyA, enemyB)) {
-                // Calculate the overlap in the x-axis
+            if (enemyA.alive && enemyB.alive && rectCollision(enemyA, enemyB)) {
                 const overlapX = (enemyA.x + enemyA.width) - enemyB.x;
 
-                // Adjust positions to prevent overlapping
                 if (enemyA.x < enemyB.x) {
                     enemyA.x -= overlapX / 2;
                     enemyB.x += overlapX / 2;
@@ -964,11 +935,8 @@ function handleEnemyCollisions() {
                     enemyB.x -= overlapX / 2;
                 }
 
-                // Reverse their horizontal velocities to simulate a bounce effect
                 enemyA.vx = -enemyA.vx;
                 enemyB.vx = -enemyB.vx;
-
-                // Update their facing directions based on new velocities
                 enemyA.facing = enemyA.vx < 0 ? 'left' : 'right';
                 enemyB.facing = enemyB.vx < 0 ? 'left' : 'right';
             }
@@ -976,30 +944,23 @@ function handleEnemyCollisions() {
     }
 }
 
-// Spawn the boss after all coins are collected
+// Spawn boss after all coins collected
 function spawnBoss() {
-    // Initialize boss at the far right of the world, aligned with the ground
-    boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.ground.height - 150); // Adjusted y-position
+    boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.ground.height - 150);
     bossActive = true;
     document.getElementById('bossHealthMeter').classList.add('show');
     updateHUD();
 }
 
-// **Reset player position and camera to starting location**
 function resetPlayerPosition() {
-    // Reset player's position to starting location and make invincible
     player.resetToStart();
-
-    // Reset camera to focus on the starting location
-    const desiredOffset = 100; // Pixels from the left
+    const desiredOffset = 100;
     cameraX = player.startX - desiredOffset;
-
-    // Clamp cameraX within the world bounds
     if (cameraX < 0) cameraX = 0;
     if (cameraX + GAME_WIDTH > WORLD_WIDTH) cameraX = WORLD_WIDTH - GAME_WIDTH;
 }
 
-// Update Game Objects
+// Update all game objects
 function update(deltaTime, currentTime) {
     player.update(deltaTime, currentTime);
 
@@ -1007,34 +968,26 @@ function update(deltaTime, currentTime) {
         enemy.updateChase(player.x, player.y, deltaTime);
     });
 
-    // Handle collisions between enemies after updating their positions
     handleEnemyCollisions();
 
     coins.forEach(coin => coin.update());
 
-    // Update boss if active
     if (bossActive && boss.alive) {
-        boss.update(deltaTime, player.x, player.y);
+        boss.update(deltaTime, player.x);
     }
 
     checkCollisions();
 
-    updateParticles(deltaTime);
+    updateParticles();
 
-    // Update camera position based on player position
-    // Deadzone logic to keep the player within a central area before scrolling
-    const cameraOffset = DEADZONE_RIGHT_BOUND; // Define how far the player can move before the camera scrolls
-
+    // Camera logic
+    const cameraOffset = DEADZONE_RIGHT_BOUND;
     if (player.x - cameraX > cameraOffset) {
         cameraX = player.x - cameraOffset;
     }
-
-    // Prevent camera from moving beyond the world bounds
     if (cameraX + GAME_WIDTH > WORLD_WIDTH) {
         cameraX = WORLD_WIDTH - GAME_WIDTH;
     }
-
-    // Prevent camera from moving left beyond the world start
     if (cameraX < 0) cameraX = 0;
 }
 
@@ -1043,50 +996,46 @@ function updateHUD() {
     const coinCounter = document.getElementById('coinCounter');
     coinCounter.innerHTML = `<img src="assets/images/coin-icon.png" alt="Coin" /> Coins: ${player.coinsCollected}/20`;
 
-    // Update Stamina Meter
+    // Stamina
     const staminaFill = document.getElementById('staminaFill');
     staminaFill.style.width = `${player.stamina}%`;
 
-    // Change color based on stamina level
     if (player.stamina > 60) {
-        staminaFill.style.backgroundColor = '#00ff00'; // Green
+        staminaFill.style.backgroundColor = '#00ff00';
     } else if (player.stamina > 30) {
-        staminaFill.style.backgroundColor = '#ffff00'; // Yellow
+        staminaFill.style.backgroundColor = '#ffff00';
     } else {
-        staminaFill.style.backgroundColor = '#ff0000'; // Red
+        staminaFill.style.backgroundColor = '#ff0000';
     }
 
-    // Update Lives Counter
+    // Lives
     const livesCounter = document.getElementById('livesCounter');
     livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
 
-    // Update Boss Health Meter if active
+    // Boss health
     if (bossActive && boss.alive) {
         const bossHealthFill = document.getElementById('bossHealthFill');
         const bossHealthPercentage = (boss.health / boss.maxHealth) * 100;
         bossHealthFill.style.width = `${bossHealthPercentage}%`;
 
-        // Change color based on boss health level
         if (bossHealthPercentage > 60) {
-            bossHealthFill.style.backgroundColor = '#ff0000'; // Red
+            bossHealthFill.style.backgroundColor = '#ff0000';
         } else if (bossHealthPercentage > 30) {
-            bossHealthFill.style.backgroundColor = '#ffff00'; // Yellow
+            bossHealthFill.style.backgroundColor = '#ffff00';
         } else {
-            bossHealthFill.style.backgroundColor = '#00ff00'; // Green
+            bossHealthFill.style.backgroundColor = '#00ff00';
         }
     }
 }
 
-// Render Game
+// Render game
 function render() {
-    // Clear canvas
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Draw seamless background
+    // Draw background
     const bgWidth = images.background.width;
     const bgHeight = images.background.height;
     const bgCount = Math.ceil(GAME_WIDTH / bgWidth) + 1;
-
     for (let i = 0; i < bgCount; i++) {
         ctx.drawImage(images.background, i * bgWidth - (cameraX % bgWidth), 0, bgWidth, GAME_HEIGHT - images.ground.height);
     }
@@ -1095,7 +1044,6 @@ function render() {
     const groundWidth = images.ground.width;
     const groundHeight = images.ground.height;
     const groundCount = Math.ceil(GAME_WIDTH / groundWidth) + 1;
-
     for (let i = 0; i < groundCount; i++) {
         ctx.drawImage(images.ground, i * groundWidth - (cameraX % groundWidth), GAME_HEIGHT - groundHeight, groundWidth, groundHeight);
     }
@@ -1124,10 +1072,9 @@ function render() {
     updateHUD();
 }
 
-// Display End Message
+// End message
 function displayEndMessage() {
     const endMessage = document.getElementById('endMessage');
-
     if (win) {
         endMessage.innerHTML = `
             <p>You Defeated the Boss! You Win!</p>
@@ -1139,11 +1086,10 @@ function displayEndMessage() {
             <button onclick="restartGame()">Try Again</button>
         `;
     }
-
-    endMessage.classList.add('show');
+    endMessage.classList.remove('hidden');
 }
 
-// Toggle Music Function
+// Toggle Music
 function toggleMusic() {
     const toggleMusicBtn = document.getElementById('toggleMusic');
     if (isMusicOn) {
@@ -1152,14 +1098,14 @@ function toggleMusic() {
         toggleMusicBtn.textContent = 'Music: Off';
         toggleMusicBtn.classList.remove('active');
     } else {
-        sounds.background.play();
+        sounds.background.play().catch(err=>console.error(err));
         isMusicOn = true;
         toggleMusicBtn.textContent = 'Music: On';
         toggleMusicBtn.classList.add('active');
     }
 }
 
-// Toggle Sound Effects Function
+// Toggle Sound Effects
 function toggleSoundEffects() {
     const toggleSoundBtn = document.getElementById('toggleSound');
     if (isSoundEffectsOn) {
@@ -1173,7 +1119,7 @@ function toggleSoundEffects() {
     }
 }
 
-// Add Event Listeners for Toggle Buttons and Start Button
+// Add Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     const toggleMusicBtn = document.getElementById('toggleMusic');
     const toggleSoundBtn = document.getElementById('toggleSound');
@@ -1184,17 +1130,10 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleSoundBtn.addEventListener('click', toggleSoundEffects);
 
     startButton.addEventListener('click', () => {
-        // Hide Start Screen
         startScreen.style.display = 'none';
-
-        // Play background music if music is on
         if (isMusicOn && sounds.background) {
-            sounds.background.play().catch(error => {
-                console.error('Failed to play background music:', error);
-            });
+            sounds.background.play().catch(error => console.error('Failed to play background music:', error));
         }
-
-        // Start the game loop
         lastTime = performance.now();
         requestAnimationFrame(gameLoop);
     });
@@ -1202,7 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Restart Game
 function restartGame() {
-    // Reset game state
     player = new Player();
     enemies = [];
     coins = [];
@@ -1214,7 +1152,6 @@ function restartGame() {
     win = false;
     cameraX = 0;
 
-    // Create platforms first (needed for coin placement on platforms)
     platforms.push(new Platform(400, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(700, GAME_HEIGHT - 220, 200, 20));
     platforms.push(new Platform(1000, GAME_HEIGHT - 180, 170, 20));
@@ -1226,7 +1163,6 @@ function restartGame() {
     platforms.push(new Platform(3500, GAME_HEIGHT - 150, 150, 20));
     platforms.push(new Platform(4000, GAME_HEIGHT - 180, 170, 20));
 
-    // Create enemies again (static on ground)
     enemies.push(new Enemy(500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(800, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(1100, GAME_HEIGHT - images.ground.height - 50));
@@ -1238,62 +1174,54 @@ function restartGame() {
     enemies.push(new Enemy(3500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(4000, GAME_HEIGHT - images.ground.height - 50));
 
-    // **Restore Original Coin Positions**
-    // Replace these positions with your original coin placements.
-    // Assuming original positions were manually set, here are 20 example positions.
-    coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(1850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(2850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3250, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3450, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3650, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(3850, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(4050, GAME_HEIGHT - images.ground.height - 50)); // Ground
-    coins.push(new Coin(4250, GAME_HEIGHT - images.ground.height - 50)); // Ground
+    // Recreate fun coin layout
+    coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 100)); 
+    coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 80));
+    coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 60));
+    coins.push(new Coin(420, GAME_HEIGHT - 180)); 
+    coins.push(new Coin(750, GAME_HEIGHT - 250));
+    coins.push(new Coin(1020, GAME_HEIGHT - 210));
+    coins.push(new Coin(1320, GAME_HEIGHT - 180)); 
+    coins.push(new Coin(1650, GAME_HEIGHT - 200)); 
+    coins.push(new Coin(1850, GAME_HEIGHT - 100)); 
+    coins.push(new Coin(2050, GAME_HEIGHT - 180));
 
-    // Reset Lives Counter
+    coins.push(new Coin(2250, GAME_HEIGHT - 100));
+    coins.push(new Coin(2450, GAME_HEIGHT - 240)); 
+    coins.push(new Coin(2650, GAME_HEIGHT - 120));
+    coins.push(new Coin(2850, GAME_HEIGHT - 200));
+    coins.push(new Coin(3050, GAME_HEIGHT - 220));
+    coins.push(new Coin(3250, GAME_HEIGHT - 160));
+    coins.push(new Coin(3450, GAME_HEIGHT - 120));
+    coins.push(new Coin(3650, GAME_HEIGHT - 180));
+    coins.push(new Coin(3850, GAME_HEIGHT - 100));
+    coins.push(new Coin(4050, GAME_HEIGHT - 140));
+    coins.push(new Coin(4250, GAME_HEIGHT - 100));
+
     const livesCounter = document.getElementById('livesCounter');
     livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
 
-    // Reset Boss Health Meter
     const bossHealthMeter = document.getElementById('bossHealthMeter');
     bossHealthMeter.classList.remove('show');
     const bossHealthFill = document.getElementById('bossHealthFill');
     bossHealthFill.style.width = '100%';
-    bossHealthFill.style.backgroundColor = '#ff0000'; // Reset to red
+    bossHealthFill.style.backgroundColor = '#ff0000'; 
 
-    // Hide end message
     const endMessage = document.getElementById('endMessage');
     if (endMessage) {
-        endMessage.classList.remove('show');
+        endMessage.classList.add('hidden');
     }
 
-    // Restart the background music if it's on
     if (isMusicOn && sounds.background) {
         sounds.background.currentTime = 0;
-        sounds.background.play().catch(error => {
-            console.error('Failed to play background music:', error);
-        });
+        sounds.background.play().catch(error => console.error(error));
     }
 
-    // Restart the game loop
-    lastTime = performance.now(); // Reset lastTime for deltaTime calculation
+    lastTime = performance.now();
     requestAnimationFrame(gameLoop);
 }
 
-// Load all assets and initialize the game
+// Load assets and init
 loadImages()
     .then(() => {
         loadSounds();
