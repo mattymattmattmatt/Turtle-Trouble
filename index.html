@@ -13,7 +13,12 @@
         
         <!-- Start Screen Overlay -->
         <div id="startScreen">
-            <button id="startButton">Start Game</button>
+            <div class="start-content">
+                <h1>Retro Turtle Platformer</h1>
+                <p>Collect all the coins and defeat the boss!</p>
+                <p>Use <strong>A / D</strong> to move, <strong>W / Space</strong> to jump,<br><strong>Ctrl</strong> to punch, and <strong>Shift</strong> to sprint.</p>
+                <button id="startButton">Start Game</button>
+            </div>
         </div>
         
         <!-- HUD (Heads-Up Display) -->
@@ -61,10 +66,11 @@
         </div>
     </div>
     
-    <!-- Audio Controls -->
+    <!-- Audio and Pause Controls -->
     <div id="audioControls">
-        <button id="toggleMusic">Music: On</button>
-        <button id="toggleSound">Sound Effects: On</button>
+        <button id="toggleMusic" class="active">Music: On</button>
+        <button id="toggleSound" class="active">Sound Effects: On</button>
+        <button id="pauseButton">Pause</button>
     </div>
     
     <script src="game.js"></script>
