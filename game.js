@@ -8,14 +8,14 @@ const GAME_WIDTH = canvas.width; // 1200
 const GAME_HEIGHT = canvas.height; // 600
 
 // World dimensions
-const WORLD_WIDTH = 5000; // Total width of the game world in pixels
-const WORLD_HEIGHT = GAME_HEIGHT; // Matches the canvas height
+const WORLD_WIDTH = 5000; 
+const WORLD_HEIGHT = GAME_HEIGHT; 
 
 // Game settings
-const PLAYER_SPEED = 2; // Normal walking speed
-const SPRINT_MULTIPLIER = 1.5; // Sprint speed multiplier
-const PLAYER_JUMP_STRENGTH = 12; // Jump strength
-const GRAVITY = 0.5; // Gravity strength
+const PLAYER_SPEED = 2; 
+const SPRINT_MULTIPLIER = 1.5;
+const PLAYER_JUMP_STRENGTH = 12;
+const GRAVITY = 0.5; 
 
 // Load images
 const images = {};
@@ -33,10 +33,9 @@ const imageSources = {
     ground: 'assets/images/ground.png',
     platform: 'assets/images/platform.png',
     coinIcon: 'assets/images/coin-icon.png',
-    lifeIcon: 'assets/images/life-icon.png' // Life icon for HUD
+    lifeIcon: 'assets/images/life-icon.png'
 };
 
-// Load all images using Promises
 const loadImages = () => {
     const promises = Object.keys(imageSources).map(key => {
         return new Promise((resolve) => {
@@ -45,36 +44,34 @@ const loadImages = () => {
             images[key].onload = () => resolve();
             images[key].onerror = () => {
                 console.error(`Failed to load image: ${imageSources[key]}`);
-                resolve(); // Resolve even if an image fails to load
+                resolve();
             };
         });
     });
     return Promise.all(promises);
 };
 
-// Load audio (Including Background Music)
+// Load audio
 const sounds = {};
 const soundSources = {
     jump: 'assets/audio/jump.wav',
     punch: 'assets/audio/punch.wav',
     collectCoin: 'assets/audio/collect-coin.wav',
     gameOver: 'assets/audio/game-over.wav',
-    background: 'assets/audio/Turtle-Trouble-Theme.mp3' // Background Music
+    background: 'assets/audio/Turtle-Trouble-Theme.mp3' 
 };
 
-// Flags to track audio settings
 let isMusicOn = true;
 let isSoundEffectsOn = true;
 
-// Load all sounds
 const loadSounds = () => {
     Object.keys(soundSources).forEach(key => {
         sounds[key] = new Audio(soundSources[key]);
         if (key === 'background') {
-            sounds[key].loop = true; // Loop the background music
-            sounds[key].volume = 0.4; // Set volume to 40%
+            sounds[key].loop = true;
+            sounds[key].volume = 0.4;
         } else {
-            sounds[key].volume = 1.0; // Default volume for sound effects
+            sounds[key].volume = 1.0;
         }
     });
 };
@@ -174,7 +171,6 @@ class Particle {
     }
 }
 
-// Platform Class
 class Platform {
     constructor(x, y, width, height) {
         this.x = x;
@@ -188,7 +184,6 @@ class Platform {
     }
 }
 
-// Player Class
 class Player {
     constructor() {
         this.startX = 100;
@@ -361,7 +356,6 @@ class Player {
     }
 }
 
-// Enemy Class
 class Enemy {
     constructor(x, y) {
         this.x = x; 
@@ -467,7 +461,6 @@ class Enemy {
     }
 }
 
-// Boss Class
 class Boss {
     constructor(x, y) {
         this.x = x; 
@@ -511,7 +504,6 @@ class Boss {
     update(deltaTime, playerX) {
         if (!this.alive) return;
 
-        // Boss enters the screen
         if (this.state === 'entering') {
             if (this.x <= GAME_WIDTH - this.width - 50) {
                 this.initiateChase(playerX);
@@ -565,7 +557,7 @@ class Boss {
         if (!this.alive) return;
 
         let img;
-        // Animate the boss in all states except if there's a hypothetical idle (not used here)
+        // Animate boss in all states where it moves
         if (this.state === 'chasing' || this.state === 'runningAway' || this.state === 'entering') {
             img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
         } else {
@@ -593,7 +585,6 @@ class Boss {
     }
 }
 
-// Coin Class
 class Coin {
     constructor(x, y) {
         this.x = x; 
@@ -658,7 +649,7 @@ function init() {
     enemies.push(new Enemy(3500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(4000, GAME_HEIGHT - images.ground.height - 50));
 
-    // Exactly 20 coins:
+    // Exactly 20 coins
     coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 100)); 
     coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 80));
     coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 60));
@@ -680,7 +671,7 @@ function init() {
     coins.push(new Coin(3650, GAME_HEIGHT - 180));
     coins.push(new Coin(3850, GAME_HEIGHT - 100));
     coins.push(new Coin(4050, GAME_HEIGHT - 140));
-    
+
     const hud = document.getElementById('hud');
     const existingLivesCounter = document.getElementById('livesCounter');
     if (!existingLivesCounter) {
@@ -713,20 +704,23 @@ function updateParticles() {
 }
 
 let lastTime = 0;
+
 function gameLoop(timeStamp) {
     const deltaTime = timeStamp - lastTime;
     lastTime = timeStamp;
 
     if (!paused && !gameOver && !win) {
         update(deltaTime, timeStamp);
-    }
-    render();
-
-    // If gameOver or win are true, show the message now, do not request new frames
-    if (gameOver || win) {
-        displayEndMessage();
-    } else {
+        render();
         requestAnimationFrame(gameLoop);
+    } else {
+        // If we are here, either paused, gameOver, or win.
+        // If paused, do nothing (don't show end message).
+        // If gameOver or win, show end message immediately.
+        if (gameOver || win) {
+            render(); // Render final state
+            displayEndMessage();
+        }
     }
 }
 
@@ -774,7 +768,6 @@ function checkCollisions() {
                     if (boss.health <= 0) {
                         boss.alive = false;
                         win = true;
-                        createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00');
                     } else {
                         boss.runAway();
                     }
@@ -790,7 +783,6 @@ function checkCollisions() {
                     if (boss.health <= 0) {
                         boss.alive = false;
                         win = true;
-                        createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#00FF00');
                     } else {
                         boss.runAway();
                     }
@@ -922,6 +914,15 @@ function update(deltaTime, currentTime) {
         cameraX = WORLD_WIDTH - GAME_WIDTH;
     }
     if (cameraX < 0) cameraX = 0;
+
+    // If player lost or boss died, set states and display message immediately
+    if (player.lives <= 0 && !win && !gameOver) {
+        gameOver = true;
+    }
+
+    if (bossActive && boss && !boss.alive && !gameOver && !win) {
+        win = true;
+    }
 }
 
 function updateHUD() {
@@ -932,27 +933,28 @@ function updateHUD() {
     staminaFill.style.width = `${player.stamina}%`;
 
     if (player.stamina > 60) {
-        staminaFill.style.backgroundColor = '#00ff00';
+        staminaFill.style.backgroundColor = '#00ff00'; // Green
     } else if (player.stamina > 30) {
-        staminaFill.style.backgroundColor = '#ffff00';
+        staminaFill.style.backgroundColor = '#ffff00'; // Yellow
     } else {
-        staminaFill.style.backgroundColor = '#ff0000';
+        staminaFill.style.backgroundColor = '#ff0000'; // Red
     }
 
     const livesCounter = document.getElementById('livesCounter');
     livesCounter.innerHTML = `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
 
-    if (bossActive && boss.alive) {
+    if (bossActive && boss && boss.alive) {
         const bossHealthFill = document.getElementById('bossHealthFill');
         const bossHealthPercentage = (boss.health / boss.maxHealth) * 100;
         bossHealthFill.style.width = `${bossHealthPercentage}%`;
 
+        // Green when high health, yellow mid, red low
         if (bossHealthPercentage > 60) {
-            bossHealthFill.style.backgroundColor = '#ff0000';
+            bossHealthFill.style.backgroundColor = '#00ff00'; 
         } else if (bossHealthPercentage > 30) {
-            bossHealthFill.style.backgroundColor = '#ffff00';
+            bossHealthFill.style.backgroundColor = '#ffff00'; 
         } else {
-            bossHealthFill.style.backgroundColor = '#00ff00';
+            bossHealthFill.style.backgroundColor = '#ff0000'; 
         }
     }
 }
@@ -1084,7 +1086,7 @@ function restartGame() {
     enemies.push(new Enemy(3500, GAME_HEIGHT - images.ground.height - 50));
     enemies.push(new Enemy(4000, GAME_HEIGHT - images.ground.height - 50));
 
-    // Exactly 20 coins again:
+    // 20 coins again
     coins.push(new Coin(250, GAME_HEIGHT - images.ground.height - 100)); 
     coins.push(new Coin(450, GAME_HEIGHT - images.ground.height - 80));
     coins.push(new Coin(650, GAME_HEIGHT - images.ground.height - 60));
@@ -1114,7 +1116,7 @@ function restartGame() {
     bossHealthMeter.classList.remove('show');
     const bossHealthFill = document.getElementById('bossHealthFill');
     bossHealthFill.style.width = '100%';
-    bossHealthFill.style.backgroundColor = '#ff0000'; 
+    bossHealthFill.style.backgroundColor = '#00ff00'; // full health green
 
     const endMessage = document.getElementById('endMessage');
     if (endMessage) {
@@ -1130,7 +1132,6 @@ function restartGame() {
     requestAnimationFrame(gameLoop);
 }
 
-// Load assets and init
 loadImages()
     .then(() => {
         loadSounds();
