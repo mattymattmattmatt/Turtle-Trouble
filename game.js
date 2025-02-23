@@ -8,7 +8,7 @@ const WORLD_HEIGHT = GAME_HEIGHT;
 
 const PLAYER_SPEED = 2;
 const SPRINT_MULTIPLIER = 1.5;
-const PLAYER_JUMP_STRENGTH = 14; // Increased for better feel
+const PLAYER_JUMP_STRENGTH = 14;
 const GRAVITY = 0.5;
 
 // Load images
@@ -22,7 +22,7 @@ const imageSources = {
     enemy: 'assets/images/bad-turtle.png',
     enemyWalk1: 'assets/images/Bad-turtle-walk1.png',
     enemyWalk2: 'assets/images/Bad-turtle-walk2.png',
-    boss: 'assets/images/boss.png', // New boss sprites (add these files)
+    boss: 'assets/images/boss.png',
     bossWalk1: 'assets/images/boss-walk1.png',
     bossWalk2: 'assets/images/boss-walk2.png',
     coin: 'assets/images/coin.png',
@@ -56,7 +56,8 @@ const soundSources = {
     punch: 'assets/audio/punch.wav',
     collectCoin: 'assets/audio/collect-coin.wav',
     gameOver: 'assets/audio/game-over.wav',
-    background: 'assets/audio/Turtle-Trouble-Theme.mp3'
+    background: 'assets/audio/Turtle-Trouble-Theme.mp3',
+    bosstrack: 'assets/audio/bosstrack.mp3' // New boss track
 };
 
 let isMusicOn = true;
@@ -65,9 +66,9 @@ let isSoundEffectsOn = true;
 const loadSounds = () => {
     Object.keys(soundSources).forEach(key => {
         sounds[key] = new Audio(soundSources[key]);
-        if (key === 'background') {
+        if (key === 'background' || key === 'bosstrack') {
             sounds[key].loop = true;
-            sounds[key].volume = 0.4;
+            sounds[key].volume = key === 'background' ? 0.4 : 0.6; // Boss track slightly louder
         } else {
             sounds[key].volume = 1.0;
         }
@@ -81,6 +82,16 @@ let debug = false;
 document.getElementById('pauseButton').addEventListener('click', () => {
     paused = !paused;
     document.getElementById('pauseButton').textContent = paused ? 'Resume' : 'Pause';
+    if (paused && isMusicOn) {
+        sounds.background.pause();
+        if (bossActive && sounds.bosstrack) sounds.bosstrack.pause();
+    } else if (!paused && isMusicOn) {
+        if (bossActive && sounds.bosstrack) {
+            sounds.bosstrack.play().catch(err => console.error(err));
+        } else {
+            sounds.background.play().catch(err => console.error(err));
+        }
+    }
 });
 
 // Input handling
@@ -107,7 +118,7 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'ShiftLeft':
         case 'ShiftRight': keys.sprint = true; break;
-        case 'F1': debug = !debug; break; // Toggle debug mode
+        case 'F1': debug = !debug; break;
     }
 });
 
@@ -129,7 +140,7 @@ class Particle {
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
-        this.vx = (Math.random() - 0.5) * 6; // Increased spread
+        this.vx = (Math.random() - 0.5) * 6;
         this.vy = (Math.random() - 0.5) * 6;
         this.alpha = 1;
         this.color = color;
@@ -139,7 +150,7 @@ class Particle {
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.alpha -= 0.03; // Faster fade
+        this.alpha -= 0.03;
     }
 
     draw() {
@@ -189,7 +200,7 @@ class Player {
 
         this.isPunching = false;
         this.punchDuration = 500;
-        this.punchCooldownDuration = 750; // Added cooldown after punch
+        this.punchCooldownDuration = 750;
         this.punchStartTime = 0;
         this.punchCooldownEndTime = 0;
 
@@ -200,7 +211,7 @@ class Player {
         this.staminaRechargeRate = 100 / 1.5;
 
         this.isInvincible = false;
-        this.invincibilityDuration = 2000; // 2 seconds
+        this.invincibilityDuration = 2000;
         this.invincibilityStartTime = 0;
     }
 
@@ -222,7 +233,7 @@ class Player {
         } else {
             this.isSprinting = false;
             this.speed = PLAYER_SPEED;
-            if (this.stamina < this.maxStamina && !keys.sprint) {
+            if (this.stamina < this.maxStamina) {
                 this.stamina += this.staminaRechargeRate * (deltaTime / 1000);
                 if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
             }
@@ -248,18 +259,14 @@ class Player {
             if (isSoundEffectsOn && sounds.jump) sounds.jump.play();
         }
 
-        if (this.isPunching) {
-            if (currentTime - this.punchStartTime >= this.punchDuration) {
-                this.isPunching = false;
-                this.punchCooldownEndTime = currentTime + this.punchCooldownDuration;
-                this.state = (this.vx === 0) ? 'idle' : 'walking';
-            }
+        if (this.isPunching && currentTime - this.punchStartTime >= this.punchDuration) {
+            this.isPunching = false;
+            this.punchCooldownEndTime = currentTime + this.punchCooldownDuration;
+            this.state = (this.vx === 0) ? 'idle' : 'walking';
         }
 
-        if (this.isInvincible) {
-            if (currentTime - this.invincibilityStartTime >= this.invincibilityDuration) {
-                this.isInvincible = false;
-            }
+        if (this.isInvincible && currentTime - this.invincibilityStartTime >= this.invincibilityDuration) {
+            this.isInvincible = false;
         }
 
         this.vy += this.gravity;
@@ -311,7 +318,7 @@ class Player {
     }
 
     resetToCamera() {
-        this.x = cameraX + 50; // Respawn at left of current screen
+        this.x = cameraX + 50;
         this.y = GAME_HEIGHT - images.ground.height - this.height;
         this.vx = 0;
         this.vy = 0;
@@ -425,11 +432,11 @@ class Boss {
         this.y = y;
         this.width = 150;
         this.height = 150;
-        this.vx = -2;
+        this.vx = 0;
         this.vy = 0;
         this.alive = true;
-        this.speed = 2.5; // Slightly faster
-        this.state = 'entering';
+        this.speed = 2.5;
+        this.state = 'chasing';
         this.animationFrame = 0;
         this.frameCount = 0;
         this.facing = 'left';
@@ -437,35 +444,14 @@ class Boss {
         this.health = this.maxHealth;
         this.runAwayDuration = 2000;
         this.runAwayStartTime = null;
-        this.jumpCooldown = 3000; // Jump every 3 seconds
+        this.jumpCooldown = 3000;
         this.lastJumpTime = 0;
 
-        this.hitBox = { xOffset: 45, yOffset: 45, width: 60, height: 60 }; // Smaller, centered hitbox
+        this.hitBox = { xOffset: 45, yOffset: 45, width: 60, height: 60 };
     }
 
-    initiateChase(playerX) {
-        this.state = 'chasing';
-        if (playerX < this.x) {
-            this.vx = -this.speed;
-            this.facing = 'left';
-        } else {
-            this.vx = this.speed;
-            this.facing = 'right';
-        }
-    }
-
-    runAway() {
-        this.state = 'runningAway';
-        this.vx = this.facing === 'left' ? this.speed : -this.speed;
-        this.runAwayStartTime = performance.now();
-    }
-
-    update(deltaTime, playerX, currentTime) {
+    update(deltaTime, playerX) {
         if (!this.alive) return;
-
-        if (this.state === 'entering' && this.x <= GAME_WIDTH - this.width - 50) {
-            this.initiateChase(playerX);
-        }
 
         if (this.state === 'chasing') {
             if (playerX < this.x) {
@@ -475,16 +461,15 @@ class Boss {
                 this.vx = this.speed;
                 this.facing = 'right';
             }
-            // Random jump
-            if (currentTime - this.lastJumpTime >= this.jumpCooldown && Math.random() < 0.02) {
+            if (Math.random() < 0.02 && performance.now() - this.lastJumpTime >= this.jumpCooldown) {
                 this.vy = -12;
-                this.lastJumpTime = currentTime;
+                this.lastJumpTime = performance.now();
             }
-        }
-
-        if (this.state === 'runningAway' && 
-            currentTime - this.runAwayStartTime >= this.runAwayDuration) {
-            this.initiateChase(playerX);
+        } else if (this.state === 'runningAway' && 
+            performance.now() - this.runAwayStartTime >= this.runAwayDuration) {
+            this.state = 'chasing';
+            this.vx = playerX < this.x ? -this.speed : this.speed;
+            this.facing = playerX < this.x ? 'left' : 'right';
         }
 
         this.vy += GRAVITY;
@@ -509,9 +494,15 @@ class Boss {
         }
     }
 
+    runAway() {
+        this.state = 'runningAway';
+        this.vx = this.facing === 'left' ? this.speed : -this.speed;
+        this.runAwayStartTime = performance.now();
+    }
+
     draw(cameraX) {
         if (!this.alive) return;
-        let img = (this.state === 'chasing' || this.state === 'runningAway' || this.state === 'entering') ?
+        let img = (this.state === 'chasing' || this.state === 'runningAway') ?
             (this.animationFrame === 0 ? images.bossWalk1 : images.bossWalk2) :
             images.boss;
 
@@ -629,7 +620,7 @@ function init() {
 }
 
 function createParticle(x, y, color = '#FFD700') {
-    for (let i = 0; i < 5; i++) { // More particles for effect
+    for (let i = 0; i < 5; i++) {
         particles.push(new Particle(x, y, color));
     }
 }
@@ -652,6 +643,7 @@ function gameLoop(timeStamp) {
     if (!paused && !gameOver && !win) {
         update(deltaTime);
         render();
+        requestAnimationFrame(gameLoop);
     } else {
         render();
         if (paused) {
@@ -661,11 +653,11 @@ function gameLoop(timeStamp) {
             ctx.font = '30px "Press Start 2P"';
             ctx.textAlign = 'center';
             ctx.fillText('Paused', GAME_WIDTH / 2, GAME_HEIGHT / 2);
+            requestAnimationFrame(gameLoop);
         } else if (gameOver || win) {
             displayEndMessage();
         }
     }
-    requestAnimationFrame(gameLoop);
 }
 
 function checkCollisions() {
@@ -680,7 +672,7 @@ function checkCollisions() {
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else if (player.isPunching) {
                 enemy.alive = false;
-                player.vx = player.facing === 'right' ? -5 : 5; // Knockback
+                player.vx = player.facing === 'right' ? -5 : 5;
                 createParticle(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#FF0000');
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else {
@@ -711,6 +703,8 @@ function checkCollisions() {
                     if (boss.health <= 0) {
                         boss.alive = false;
                         win = true;
+                        if (isMusicOn && sounds.bosstrack) sounds.bosstrack.pause();
+                        if (isMusicOn && sounds.background) sounds.background.play().catch(err => console.error(err));
                     } else {
                         boss.runAway();
                     }
@@ -718,12 +712,14 @@ function checkCollisions() {
             } else if (player.isPunching) {
                 if (boss.state !== 'runningAway') {
                     boss.health -= 1;
-                    player.vx = player.facing === 'right' ? -5 : 5; // Knockback
+                    player.vx = player.facing === 'right' ? -5 : 5;
                     createParticle(boss.x + boss.width / 2, boss.y + boss.height / 2, '#FF0000');
                     if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
                     if (boss.health <= 0) {
                         boss.alive = false;
                         win = true;
+                        if (isMusicOn && sounds.bosstrack) sounds.bosstrack.pause();
+                        if (isMusicOn && sounds.background) sounds.background.play().catch(err => console.error(err));
                     } else {
                         boss.runAway();
                     }
@@ -737,6 +733,8 @@ function checkCollisions() {
                     player.resetToCamera();
                 } else {
                     gameOver = true;
+                    if (isMusicOn && sounds.bosstrack) sounds.bosstrack.pause();
+                    if (isMusicOn && sounds.background) sounds.background.play().catch(err => console.error(err));
                 }
             }
         }
@@ -753,7 +751,6 @@ function checkCollisions() {
         }
     });
 
-    // Platform collisions
     platforms.forEach(platform => {
         if (rectCollision(player, platform) && player.vy >= 0 && 
             player.y + player.height - player.vy <= platform.y) {
@@ -778,7 +775,6 @@ function checkCollisions() {
         }
     });
 
-    // Ground collisions
     if (player.y + player.height >= GAME_HEIGHT - images.ground.height) {
         player.y = GAME_HEIGHT - images.ground.height - player.height;
         player.vy = 0;
@@ -834,6 +830,8 @@ function spawnBoss() {
     bossActive = true;
     document.getElementById('bossHealthMeter').classList.remove('hidden');
     updateHUD();
+    if (isMusicOn && sounds.background) sounds.background.pause();
+    if (isMusicOn && sounds.bosstrack) sounds.bosstrack.play().catch(err => console.error(err));
 }
 
 function update(deltaTime) {
@@ -844,7 +842,7 @@ function update(deltaTime) {
 
     coins.forEach(coin => coin.update());
 
-    if (bossActive && boss.alive) boss.update(deltaTime, player.x, currentTime);
+    if (bossActive && boss.alive) boss.update(deltaTime, player.x);
 
     checkCollisions();
     updateParticles();
@@ -866,6 +864,13 @@ function updateHUD() {
 
     const staminaFill = document.getElementById('staminaFill');
     staminaFill.style.width = `${player.stamina}%`;
+    if (player.stamina > 60) {
+        staminaFill.style.background = '#00ff00';
+    } else if (player.stamina > 30) {
+        staminaFill.style.background = '#ffff00';
+    } else {
+        staminaFill.style.background = '#ff0000';
+    }
 
     document.getElementById('livesCounter').innerHTML = 
         `<img src="assets/images/life-icon.png" alt="Lives" /> Lives: ${player.lives}`;
@@ -874,6 +879,8 @@ function updateHUD() {
         const bossHealthFill = document.getElementById('bossHealthFill');
         const bossHealthPercentage = (boss.health / boss.maxHealth) * 100;
         bossHealthFill.style.width = `${bossHealthPercentage}%`;
+        bossHealthFill.style.backgroundColor = bossHealthPercentage > 60 ? '#00ff00' : 
+            bossHealthPercentage > 30 ? '#ffff00' : '#ff0000';
     }
 }
 
@@ -920,12 +927,17 @@ function toggleMusic() {
     const toggleMusicBtn = document.getElementById('toggleMusic');
     if (isMusicOn) {
         sounds.background.pause();
+        if (bossActive && sounds.bosstrack) sounds.bosstrack.pause();
         isMusicOn = false;
         toggleMusicBtn.textContent = 'Music: Off';
         toggleMusicBtn.classList.remove('active');
     } else {
-        sounds.background.play().catch(err => console.error(err));
         isMusicOn = true;
+        if (bossActive && sounds.bosstrack) {
+            sounds.bosstrack.play().catch(err => console.error(err));
+        } else {
+            sounds.background.play().catch(err => console.error(err));
+        }
         toggleMusicBtn.textContent = 'Music: On';
         toggleMusicBtn.classList.add('active');
     }
@@ -971,6 +983,7 @@ function restartGame() {
     const endMessage = document.getElementById('endMessage');
     endMessage.classList.add('hidden');
 
+    if (isMusicOn && sounds.bosstrack) sounds.bosstrack.pause();
     if (isMusicOn && sounds.background) {
         sounds.background.currentTime = 0;
         sounds.background.play().catch(err => console.error(err));
