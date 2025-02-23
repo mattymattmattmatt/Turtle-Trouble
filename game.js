@@ -644,9 +644,11 @@ function gameLoop(timeStamp) {
     if (!paused && !gameOver && !win) {
         update(deltaTime);
         render();
+        updateHUD(); // Moved here to update HUD every frame
         requestAnimationFrame(gameLoop);
     } else {
         render();
+        updateHUD(); // Ensure HUD updates even when paused or game over
         if (paused) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -678,7 +680,6 @@ function checkCollisions() {
                 if (isSoundEffectsOn && sounds.punch) sounds.punch.play();
             } else {
                 player.lives -= 1;
-                updateHUD();
                 createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000');
                 if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
                 if (player.lives > 0) {
@@ -727,7 +728,6 @@ function checkCollisions() {
                 }
             } else {
                 player.lives -= 1;
-                updateHUD();
                 createParticle(player.x + player.width / 2, player.y + player.height / 2, '#000000');
                 if (isSoundEffectsOn && sounds.gameOver) sounds.gameOver.play();
                 if (player.lives > 0) {
@@ -747,7 +747,6 @@ function checkCollisions() {
             player.coinsCollected++;
             createParticle(coin.x + coin.width / 2, coin.y + coin.height / 2);
             if (isSoundEffectsOn && sounds.collectCoin) sounds.collectCoin.play();
-            updateHUD();
             if (player.coinsCollected >= 20 && !bossActive) spawnBoss();
         }
     });
@@ -830,7 +829,6 @@ function spawnBoss() {
     boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.ground.height - 150);
     bossActive = true;
     document.getElementById('bossHealthMeter').classList.remove('hidden');
-    updateHUD();
     if (isMusicOn && sounds.background) sounds.background.pause();
     if (isMusicOn && sounds.bosstrack) sounds.bosstrack.play().catch(err => console.error(err));
 }
