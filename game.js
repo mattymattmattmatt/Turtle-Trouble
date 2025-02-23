@@ -57,7 +57,7 @@ const soundSources = {
     collectCoin: 'assets/audio/collect-coin.wav',
     gameOver: 'assets/audio/game-over.wav',
     background: 'assets/audio/Turtle-Trouble-Theme.mp3',
-    bosstrack: 'assets/audio/bosstrack.mp3' // New boss track
+    bosstrack: 'assets/audio/bosstrack.mp3'
 };
 
 let isMusicOn = true;
@@ -68,7 +68,7 @@ const loadSounds = () => {
         sounds[key] = new Audio(soundSources[key]);
         if (key === 'background' || key === 'bosstrack') {
             sounds[key].loop = true;
-            sounds[key].volume = key === 'background' ? 0.4 : 0.6; // Boss track slightly louder
+            sounds[key].volume = key === 'background' ? 0.4 : 0.6;
         } else {
             sounds[key].volume = 1.0;
         }
@@ -207,8 +207,8 @@ class Player {
         this.isSprinting = false;
         this.stamina = 100;
         this.maxStamina = 100;
-        this.staminaDepletionRate = 100 / 1.5;
-        this.staminaRechargeRate = 100 / 1.5;
+        this.staminaDepletionRate = 100 / 1.5; // Depletes in 1.5 seconds
+        this.staminaRechargeRate = 100 / 1.5;  // Recharges in 1.5 seconds
 
         this.isInvincible = false;
         this.invincibilityDuration = 2000;
@@ -225,6 +225,7 @@ class Player {
     }
 
     update(deltaTime, currentTime) {
+        // Stamina and sprint logic
         if (keys.sprint && this.stamina > 0) {
             this.isSprinting = true;
             this.speed = PLAYER_SPEED * SPRINT_MULTIPLIER;
@@ -233,7 +234,7 @@ class Player {
         } else {
             this.isSprinting = false;
             this.speed = PLAYER_SPEED;
-            if (this.stamina < this.maxStamina) {
+            if (this.stamina < this.maxStamina && !keys.sprint) {
                 this.stamina += this.staminaRechargeRate * (deltaTime / 1000);
                 if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
             }
@@ -865,11 +866,11 @@ function updateHUD() {
     const staminaFill = document.getElementById('staminaFill');
     staminaFill.style.width = `${player.stamina}%`;
     if (player.stamina > 60) {
-        staminaFill.style.background = '#00ff00';
+        staminaFill.style.backgroundColor = '#00ff00';
     } else if (player.stamina > 30) {
-        staminaFill.style.background = '#ffff00';
+        staminaFill.style.backgroundColor = '#ffff00';
     } else {
-        staminaFill.style.background = '#ff0000';
+        staminaFill.style.backgroundColor = '#ff0000';
     }
 
     document.getElementById('livesCounter').innerHTML = 
