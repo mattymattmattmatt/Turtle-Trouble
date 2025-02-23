@@ -1,42 +1,42 @@
-/* Import the retro font */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 body {
-    background-color: #1a1a1a; /* Dark background for contrast */
+    background-color: #1a1a1a;
     color: #ffffff;
-    font-family: 'Press Start 2P', cursive; /* Retro font */
+    font-family: 'Press Start 2P', cursive;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
     margin: 0;
-}
-
-/* Optional: Adding a Pixelated Cursor */
-body {
     cursor: url('assets/images/pixel-cursor.png'), auto;
 }
 
 #gameContainer {
-    position: relative; /* Make #gameContainer the positioning context */
+    position: relative;
     margin-bottom: 20px;
 }
 
-/* Start Screen Styles */
 #startScreen {
     position: absolute;
     top: 0;
     left: 0;
-    width: 1200px; /* Match canvas width */
-    height: 600px; /* Match canvas height */
+    width: 1200px;
+    height: 600px;
     background-color: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10; /* Ensure it overlays the canvas */
+    z-index: 10;
     text-align: center;
     padding: 20px;
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 #startScreen .start-content {
@@ -72,7 +72,6 @@ body {
     transform: scale(1.05);
 }
 
-/* HUD Styles */
 #hud {
     position: absolute;
     top: 10px;
@@ -83,12 +82,10 @@ body {
     font-size: 16px;
 }
 
-/* Coin Counter Styles */
 #coinCounter {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 16px;
 }
 
 #coinCounter img {
@@ -96,7 +93,6 @@ body {
     vertical-align: middle;
 }
 
-/* Stamina Meter Styles */
 #staminaMeter {
     width: 150px;
     height: 20px;
@@ -109,15 +105,14 @@ body {
 #staminaFill {
     height: 100%;
     width: 100%;
-    background-color: #00ff00; /* Green by default */
+    background: linear-gradient(to right, #00ff00, #ffff00); /* Gradient effect */
+    transition: width 0.2s, background 0.2s;
 }
 
-/* Lives Counter Styles */
 #livesCounter {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 16px;
 }
 
 #livesCounter img {
@@ -125,7 +120,6 @@ body {
     vertical-align: middle;
 }
 
-/* Boss Health Meter Styles */
 #bossHealthMeter {
     position: absolute;
     bottom: 10px;
@@ -137,24 +131,20 @@ body {
     border: 2px solid #ffffff;
     border-radius: 5px;
     overflow: hidden;
-    display: none; /* Hidden by default */
 }
 
 #bossHealthFill {
     height: 100%;
     width: 100%;
-    background-color: #ff0000; /* Red by default */
+    background-color: #00ff00;
     transition: width 0.3s, background-color 0.3s;
 }
 
-/* Show the boss health meter when active */
-#bossHealthMeter.show {
-    display: block;
+.hidden {
+    display: none;
 }
 
-/* End Message Styles */
 #endMessage {
-    z-index:20;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -165,11 +155,8 @@ body {
     border-radius: 10px;
     text-align: center;
     font-size: 18px;
-    display: none;
-}
-
-#endMessage.show {
-    display: block;
+    z-index: 20;
+    animation: fadeIn 0.5s;
 }
 
 #endMessage p {
@@ -186,7 +173,6 @@ body {
     font-size: 12px;
     cursor: pointer;
     border-radius: 5px;
-    margin-top: 15px;
     transition: background-color 0.3s;
 }
 
@@ -194,11 +180,6 @@ body {
     background-color: #e6b800;
 }
 
-.hidden {
-    display: none;
-}
-
-/* Controls Section Styles */
 #controlsContainer {
     background-color: #333333;
     padding: 20px;
@@ -235,7 +216,6 @@ body {
     padding: 5px 10px;
     border-radius: 5px;
     margin-right: 10px;
-    font-family: 'Press Start 2P', cursive;
     font-size: 10px;
 }
 
@@ -243,7 +223,6 @@ body {
     font-size: 10px;
 }
 
-/* Audio and Pause Controls Styles */
 #audioControls {
     margin-top: 20px;
     display: flex;
@@ -274,15 +253,11 @@ body {
     color: #000000;
 }
 
-/* Pause Button Specific Styles */
 #pauseButton {
-    font-size: 10px;
-    font-family: 'Press Start 2P', cursive;
     background-color: #444444;
     color: #ffffff;
     border: 2px solid #ffffff;
     border-radius: 5px;
-    cursor: pointer;
     transition: background-color 0.3s, color 0.3s;
 }
 
