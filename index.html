@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <title>Retro Turtle Platformer</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Importing a Retro Font from Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="1200" height="600"></canvas>
         
-        <!-- Start Screen Overlay -->
         <div id="startScreen">
             <div class="start-content">
                 <h1>Retro Turtle Platformer</h1>
@@ -21,7 +19,6 @@
             </div>
         </div>
         
-        <!-- HUD (Heads-Up Display) -->
         <div id="hud">
             <div id="coinCounter">
                 <img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20
@@ -34,18 +31,15 @@
             </div>
         </div>
         
-        <!-- Boss Health Meter -->
-        <div id="bossHealthMeter">
+        <div id="bossHealthMeter" class="hidden">
             <div id="bossHealthFill"></div>
         </div>
         
-        <!-- End Message Overlay -->
         <div id="endMessage" class="hidden">
             <!-- End game messages will appear here -->
         </div>
     </div>
     
-    <!-- Controls Section -->
     <div id="controlsContainer">
         <h2>Controls</h2>
         <div class="control">
@@ -66,7 +60,6 @@
         </div>
     </div>
     
-    <!-- Audio and Pause Controls -->
     <div id="audioControls">
         <button id="toggleMusic" class="active">Music: On</button>
         <button id="toggleSound" class="active">Sound Effects: On</button>
