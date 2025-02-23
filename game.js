@@ -208,7 +208,7 @@ class Player {
         this.stamina = 100;
         this.maxStamina = 100;
         this.staminaDepletionRate = 100 / 1.5; // Depletes in 1.5 seconds
-        this.staminaRechargeRate = 100 / 1.5;  // Recharges in 1.5 seconds
+        this.staminaRechargeRate = 100 / 3;    // Recharges in 3 seconds
 
         this.isInvincible = false;
         this.invincibilityDuration = 2000;
@@ -225,7 +225,7 @@ class Player {
     }
 
     update(deltaTime, currentTime) {
-        // Stamina and sprint logic
+        // Sprinting and stamina logic (only affected by Shift)
         if (keys.sprint && this.stamina > 0) {
             this.isSprinting = true;
             this.speed = PLAYER_SPEED * SPRINT_MULTIPLIER;
@@ -234,7 +234,7 @@ class Player {
         } else {
             this.isSprinting = false;
             this.speed = PLAYER_SPEED;
-            if (this.stamina < this.maxStamina && !keys.sprint) {
+            if (this.stamina < this.maxStamina) {
                 this.stamina += this.staminaRechargeRate * (deltaTime / 1000);
                 if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
             }
