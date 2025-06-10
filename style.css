@@ -1,271 +1,269 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/style.css b/style.css
+index 20b80a69778764e9b5d7bcf32aa5c0a6160829cd..cc3a3971f90e0c9dfe5619d04f545303371f2e4a 100644
+--- a/style.css
++++ b/style.css
+@@ -1,60 +1,71 @@
+ @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-body {
-    background-color: #1a1a1a;
-    color: #ffffff;
-    font-family: 'Press Start 2P', cursive;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    cursor: url('assets/images/pixel-cursor.png'), auto;
-}
+ 
 
-#gameContainer {
-    position: relative;
-    margin-bottom: 20px;
-}
+-body {
 
-#startScreen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 1200px;
-    height: 600px;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    text-align: center;
-    padding: 20px;
-    animation: fadeIn 0.5s;
-}
+-    background-color: #1a1a1a;
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+-    color: #ffffff;
 
-#startScreen .start-content {
-    color: #ffffff;
-    max-width: 600px;
-}
+-    font-family: 'Press Start 2P', cursive;
 
-#startScreen h1 {
-    font-size: 20px;
-    margin-bottom: 20px;
-}
+-    display: flex;
 
-#startScreen p {
-    font-size: 12px;
-    line-height: 1.5;
-    margin-bottom: 15px;
-}
+-    flex-direction: column;
 
-#startButton {
-    background-color: #ffcc00;
-    color: #000000;
-    border: none;
-    padding: 15px 30px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 14px;
-    cursor: pointer;
-    border-radius: 10px;
-    transition: background-color 0.3s, transform 0.2s;
-}
+-    align-items: center;
 
-#startButton:hover {
-    background-color: #e6b800;
-    transform: scale(1.05);
-}
+-    justify-content: center;
 
-#hud {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    font-size: 16px;
-    z-index: 15;
-}
+-    min-height: 100vh;
 
-#coinCounter {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+-    margin: 0;
 
-#coinCounter img {
-    width: 20px;
-    vertical-align: middle;
-}
+-    cursor: url('assets/images/pixel-cursor.png'), auto;
 
-#staminaMeter {
-    width: 150px;
-    height: 20px;
-    background-color: #555555;
-    border: 2px solid #ffffff;
-    border-radius: 5px;
-    overflow: hidden;
-}
+-}
 
-#staminaFill {
-    height: 100%;
-    width: 100%;
-    background-color: #00ff00; /* Default green */
-    transition: width 0.2s ease;
-}
+-
 
-#livesCounter {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+-#gameContainer {
 
-#livesCounter img {
-    width: 20px;
-    vertical-align: middle;
-}
+-    position: relative;
 
-#bossHealthMeter {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 300px;
-    height: 25px;
-    background-color: #555555;
-    border: 2px solid #ffffff;
-    border-radius: 5px;
-    overflow: hidden;
-    z-index: 15;
-}
+-    margin-bottom: 20px;
 
-#bossHealthFill {
-    height: 100%;
-    width: 100%;
-    background-color: #00ff00; /* Default green */
-    transition: width 0.3s ease;
-}
+-}
 
-.hidden {
-    display: none;
-}
+-
 
-#endMessage {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    padding: 30px;
-    border: 3px solid #ffffff;
-    border-radius: 10px;
-    text-align: center;
-    font-size: 18px;
-    z-index: 100;
-    animation: fadeIn 0.5s;
-    pointer-events: all;
-}
+-#startScreen {
 
-#endMessage p {
-    margin-bottom: 20px;
-    font-size: 14px;
-}
+-    position: absolute;
 
-#endMessage button {
-    background-color: #ffcc00;
-    color: #000000;
-    border: none;
-    padding: 10px 20px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-    pointer-events: all;
-}
+-    top: 0;
 
-#endMessage button:hover {
-    background-color: #e6b800;
-}
+-    left: 0;
 
-#controlsContainer {
-    background-color: #333333;
-    padding: 20px;
-    border: 4px solid #ffffff;
-    border-radius: 10px;
-    width: 80%;
-    max-width: 1200px;
-    font-size: 12px;
-    color: #ffffff;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    margin-top: 10px;
-}
+-    width: 1200px;
 
-#controlsContainer h2 {
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 16px;
-    color: #ffcc00;
-}
+-    height: 600px;
 
-.control {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-}
+-    background-color: rgba(0, 0, 0, 0.8);
 
-.control:last-child {
-    margin-bottom: 0;
-}
+-    display: flex;
 
-.key {
-    background-color: #444444;
-    padding: 5px 10px;
-    border-radius: 5px;
-    margin-right: 10px;
-    font-size: 10px;
-}
+-    align-items: center;
 
-.action {
-    font-size: 10px;
-}
+-    justify-content: center;
 
-#audioControls {
-    margin-top: 20px;
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
+-    z-index: 10;
 
-#audioControls button {
-    background-color: #444444;
-    color: #ffffff;
-    border: 2px solid #ffffff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-}
+-    text-align: center;
 
-#audioControls button:hover {
-    background-color: #ffcc00;
-    color: #000000;
-}
+-    padding: 20px;
 
-#audioControls button.active {
-    background-color: #ffcc00;
-    color: #000000;
-}
+-    animation: fadeIn 0.5s;
 
-#pauseButton {
-    background-color: #444444;
-    color: #ffffff;
-    border: 2px solid #ffffff;
-    border-radius: 5px;
-    transition: background-color 0.3s, color 0.3s;
-}
+-}
 
-#pauseButton:hover {
-    background-color: #ffcc00;
-    color: #000000;
-}
++body {
++    background-color: #1a1a1a;
++    color: #ffffff;
++    font-family: 'Press Start 2P', cursive;
++    display: flex;
++    flex-direction: column;
++    align-items: center;
++    justify-content: center;
++    min-height: 100vh;
++    margin: 0;
++    overflow: hidden;
++    cursor: url('assets/images/pixel-cursor.png'), auto;
++}
++
+
++#gameContainer {
++    position: relative;
++    width: 100vw;
++    height: 100vh;
++    margin: 0;
++    overflow: hidden;
++}
++
++#gameCanvas {
++    width: 100%;
++    height: 100%;
++    touch-action: none;
++}
++
+
++#startScreen {
++    position: absolute;
++    top: 0;
++    left: 0;
++    width: 100%;
++    height: 100%;
++    background-color: rgba(0, 0, 0, 0.8);
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    z-index: 10;
++    text-align: center;
++    padding: 20px;
++    box-sizing: border-box;
++    animation: fadeIn 0.5s;
++}
+ 
+
+ @keyframes fadeIn {
+
+     from { opacity: 0; }
+
+     to { opacity: 1; }
+
+ }
+
+ 
+
+ #startScreen .start-content {
+
+     color: #ffffff;
+
+     max-width: 600px;
+
+ }
+
+ 
+
+ #startScreen h1 {
+
+     font-size: 20px;
+
+     margin-bottom: 20px;
+
+ }
+
+ 
+
+ #startScreen p {
+
+     font-size: 12px;
+
+     line-height: 1.5;
+
+     margin-bottom: 15px;
+
+ }
+
+ 
+
+ #startButton {
+
+     background-color: #ffcc00;
+
+     color: #000000;
+
+diff --git a/style.css b/style.css
+index 20b80a69778764e9b5d7bcf32aa5c0a6160829cd..cc3a3971f90e0c9dfe5619d04f545303371f2e4a 100644
+--- a/style.css
++++ b/style.css
+@@ -243,29 +254,56 @@ body {
+     border-radius: 5px;
+
+     font-family: 'Press Start 2P', cursive;
+
+     font-size: 10px;
+
+     cursor: pointer;
+
+     transition: background-color 0.3s, color 0.3s;
+
+ }
+
+ 
+
+ #audioControls button:hover {
+
+     background-color: #ffcc00;
+
+     color: #000000;
+
+ }
+
+ 
+
+ #audioControls button.active {
+
+     background-color: #ffcc00;
+
+     color: #000000;
+
+ }
+
+ 
+
+ #pauseButton {
+
+     background-color: #444444;
+
+     color: #ffffff;
+
+     border: 2px solid #ffffff;
+
+     border-radius: 5px;
+
+     transition: background-color 0.3s, color 0.3s;
+
+ }
+
+ 
+
+-#pauseButton:hover {
+
+-    background-color: #ffcc00;
+
+-    color: #000000;
+
+-}
+
++#pauseButton:hover {
++    background-color: #ffcc00;
++    color: #000000;
++}
++
++/* Mobile adjustments */
++@media (max-width: 768px) {
++    #controlsContainer,
++    #audioControls {
++        font-size: 8px;
++        width: 90%;
++        display: none;
++    }
++
++    #hud {
++        font-size: 12px;
++    }
++
++    #startScreen h1 {
++        font-size: 16px;
++    }
++
++    #startScreen p {
++        font-size: 10px;
++    }
++
++    #startButton {
++        font-size: 12px;
++        padding: 10px 20px;
++    }
++}
+ 
+EOF
+)
