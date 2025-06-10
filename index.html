@@ -1,99 +1,141 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/index.html b/index.html
-index 42d1f2df288a3cf5ef86bded27df97449f0e544a..dd88a819f2ff294150594b578d82e24ff8575b11 100644
---- a/index.html
-+++ b/index.html
-@@ -1,42 +1,43 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 
- <html lang="en">
+<html lang="en">
 
- <head>
+<head>
 
--    <meta charset="UTF-8">
+    <meta charset="UTF-8">
 
--    <title>Retro Turtle Platformer</title>
+    <title>Retro Turtle Platformer</title>
 
--    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
 
--    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
-+    <meta charset="UTF-8">
-+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-+    <title>Retro Turtle Platformer</title>
-+    <link rel="stylesheet" href="style.css">
-+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
- </head>
+</head>
 
- <body>
+<body>
 
-     <div id="gameContainer">
+    <div id="gameContainer">
 
-         <canvas id="gameCanvas" width="1200" height="600"></canvas>
+        <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
-         
+        
 
-         <div id="startScreen">
+        <div id="startScreen">
 
-             <div class="start-content">
+            <div class="start-content">
 
-                 <h1>Retro Turtle Platformer</h1>
+                <h1>Retro Turtle Platformer</h1>
 
-                 <p>Collect all the coins and defeat the boss!</p>
+                <p>Collect all the coins and defeat the boss!</p>
 
--                <p>Use <strong>A / D</strong> to move, <strong>W / Space</strong> to jump,<br><strong>Ctrl</strong> to punch, and <strong>Shift</strong> to sprint.</p>
+                <p>Use <strong>A / D</strong> to move, <strong>W / Space</strong> to jump,<br><strong>Ctrl</strong> to punch, and <strong>Shift</strong> to sprint.</p>
 
-+                <p>Hold the right side of the screen to move right, the left side to move left.<br>Tap the middle to jump. Tap then hold on a side to sprint.</p>
-                 <button id="startButton">Start Game</button>
+                <button id="startButton">Start Game</button>
 
-             </div>
+            </div>
 
-         </div>
+        </div>
 
-         
+        
 
-         <div id="hud">
+        <div id="hud">
 
-             <div id="coinCounter">
+            <div id="coinCounter">
 
-                 <img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20
+                <img src="assets/images/coin-icon.png" alt="Coin" /> Coins: 0/20
 
-             </div>
+            </div>
 
-             <div id="staminaMeter">
+            <div id="staminaMeter">
 
-                 <div id="staminaFill"></div>
+                <div id="staminaFill"></div>
 
-             </div>
+            </div>
 
-             <div id="livesCounter">
+            <div id="livesCounter">
 
-                 <img src="assets/images/life-icon.png" alt="Lives" /> Lives: 3
+                <img src="assets/images/life-icon.png" alt="Lives" /> Lives: 3
 
-             </div>
+            </div>
 
-         </div>
+        </div>
 
-         
+        
 
-         <div id="bossHealthMeter" class="hidden">
+        <div id="bossHealthMeter" class="hidden">
 
-             <div id="bossHealthFill"></div>
+            <div id="bossHealthFill"></div>
 
-         </div>
+        </div>
 
-         
+        
 
-         <div id="endMessage" class="hidden">
+        <div id="endMessage" class="hidden">
 
-             <!-- End game messages will appear here -->
+            <!-- End game messages will appear here -->
 
-         </div>
+        </div>
 
-     </div>
+    </div>
 
-     
+    
 
- 
-EOF
-)
+    <div id="controlsContainer">
+
+        <h2>Controls</h2>
+
+        <div class="control">
+
+            <span class="key">A / D</span>
+
+            <span class="action">Move Left / Right</span>
+
+        </div>
+
+        <div class="control">
+
+            <span class="key">W / Space</span>
+
+            <span class="action">Jump</span>
+
+        </div>
+
+        <div class="control">
+
+            <span class="key">Ctrl</span>
+
+            <span class="action">Punch</span>
+
+        </div>
+
+        <div class="control">
+
+            <span class="key">Shift</span>
+
+            <span class="action">Sprint</span>
+
+        </div>
+
+    </div>
+
+    
+
+    <div id="audioControls">
+
+        <button id="toggleMusic" class="active">Music: On</button>
+
+        <button id="toggleSound" class="active">Sound Effects: On</button>
+
+        <button id="pauseButton">Pause</button>
+
+    </div>
+
+    
+
+    <script src="game.js"></script>
+
+</body>
+
+</html>
