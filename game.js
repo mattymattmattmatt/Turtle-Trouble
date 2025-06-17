@@ -354,8 +354,8 @@ class Player {
         }
     }
 
-    resetToStart() {
-        this.x = this.startX;
+    resetToStart(newX = this.startX) {
+        this.x = newX;
         this.y = this.startY;
         this.vx = 0;
         this.vy = 0;
@@ -886,16 +886,17 @@ function handleEnemyCollisions() {
 function spawnBoss() {
     boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.ground.height - 150);
     bossActive = true;
-    document.getElementById('bossHealthMeter').classList.add('show');
+    const meter = document.getElementById('bossHealthMeter');
+    meter.classList.remove('hidden');
+    meter.classList.add('show');
     updateHUD();
 }
 
 function resetPlayerPosition() {
-    player.resetToStart();
-    const desiredOffset = 100;
-    cameraX = player.startX - desiredOffset;
-    if (cameraX < 0) cameraX = 0;
-    if (cameraX + GAME_WIDTH > WORLD_WIDTH) cameraX = WORLD_WIDTH - GAME_WIDTH;
+    let respawnX = cameraX + 200;
+    if (respawnX < 0) respawnX = 0;
+    if (respawnX + player.width > WORLD_WIDTH) respawnX = WORLD_WIDTH - player.width;
+    player.resetToStart(respawnX);
 }
 
 function update(deltaTime, currentTime) {
@@ -1124,6 +1125,7 @@ function restartGame() {
 
     const bossHealthMeter = document.getElementById('bossHealthMeter');
     bossHealthMeter.classList.remove('show');
+    bossHealthMeter.classList.add('hidden');
     const bossHealthFill = document.getElementById('bossHealthFill');
     bossHealthFill.style.width = '100%';
     bossHealthFill.style.backgroundColor = '#00ff00'; // full health green
