@@ -105,8 +105,7 @@ document.addEventListener('keydown', (e) => {
         case 'Space':
             keys.up = true;
             break;
-        case 'ControlLeft':
-        case 'ControlRight':
+        case 'KeyB':
             if (!keys.punch) {
                 keys.punch = true;
                 player.initiatePunch();
@@ -131,8 +130,7 @@ document.addEventListener('keyup', (e) => {
         case 'Space':
             keys.up = false;
             break;
-        case 'ControlLeft':
-        case 'ControlRight':
+        case 'KeyB':
             keys.punch = false;
             break;
         case 'ShiftLeft':
