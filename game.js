@@ -33,7 +33,10 @@ const imageSources = {
     ground: 'assets/images/ground.png',
     platform: 'assets/images/platform.png',
     coinIcon: 'assets/images/coin-icon.png',
-    lifeIcon: 'assets/images/life-icon.png'
+    lifeIcon: 'assets/images/life-icon.png',
+    boss: 'assets/images/boss.png',
+    bossWalk1: 'assets/images/boss-walk1.png',
+    bossWalk2: 'assets/images/boss-walk2.png'
 };
 
 const loadImages = () => {
@@ -81,7 +84,16 @@ let paused = false;
 
 document.getElementById('pauseButton').addEventListener('click', () => {
     paused = !paused;
-    document.getElementById('pauseButton').textContent = paused ? 'Resume' : 'Pause';
+    const btn = document.getElementById('pauseButton');
+    btn.textContent = paused ? 'Resume' : 'Pause';
+
+    if (paused) {
+        if (sounds.background) sounds.background.pause();
+    } else {
+        lastTime = performance.now();
+        if (isMusicOn && sounds.background) sounds.background.play();
+        requestAnimationFrame(gameLoop);
+    }
 });
 
 // Handle user input
@@ -555,11 +567,11 @@ class Boss {
         if (!this.alive) return;
 
         let img;
-        // Animate boss in all states where it moves
+        // Animate boss using dedicated sprites
         if (this.state === 'chasing' || this.state === 'runningAway' || this.state === 'entering') {
-            img = this.animationFrame === 0 ? images.enemyWalk1 : images.enemyWalk2;
+            img = this.animationFrame === 0 ? images.bossWalk1 : images.bossWalk2;
         } else {
-            img = images.enemy;
+            img = images.boss;
         }
 
         ctx.save();
