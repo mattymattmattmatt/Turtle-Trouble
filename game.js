@@ -886,7 +886,9 @@ function handleEnemyCollisions() {
 function spawnBoss() {
     boss = new Boss(WORLD_WIDTH, GAME_HEIGHT - images.ground.height - 150);
     bossActive = true;
-    document.getElementById('bossHealthMeter').classList.add('show');
+    const meter = document.getElementById('bossHealthMeter');
+    meter.classList.remove('hidden');
+    meter.classList.add('show');
     updateHUD();
 }
 
@@ -1123,6 +1125,7 @@ function restartGame() {
 
     const bossHealthMeter = document.getElementById('bossHealthMeter');
     bossHealthMeter.classList.remove('show');
+    bossHealthMeter.classList.add('hidden');
     const bossHealthFill = document.getElementById('bossHealthFill');
     bossHealthFill.style.width = '100%';
     bossHealthFill.style.backgroundColor = '#00ff00'; // full health green
